@@ -17,9 +17,14 @@ jobs:
 
       - name: Set up Docker environment (fix permissions)
         run: |
+          # Ensure the docker group exists
           sudo groupadd docker || true
+          # Add the current user to the docker group
           sudo usermod -aG docker $USER
-          sudo service docker start
+          # Restart Docker to apply changes
+          sudo service docker restart
+          # Verify Docker group membership (optional)
+          id -nG
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
