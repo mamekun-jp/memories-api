@@ -27,6 +27,9 @@ jobs:
       id: vars
       run: echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
 
+    - name: Build the application (e.g., with Gradle or Maven)
+      run: ./gradlew build  # Ensure the build directory is generated
+
     - name: Build and Push Docker Image
       uses: docker/build-push-action@v5
       with:
