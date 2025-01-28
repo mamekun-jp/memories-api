@@ -6,6 +6,7 @@ import jp.mamekun.memories.api.model.api.NotificationCountResponse;
 import jp.mamekun.memories.api.model.api.NotificationResponse;
 import jp.mamekun.memories.api.repository.NotificationRepository;
 import jp.mamekun.memories.api.repository.UserRepository;
+import jp.mamekun.memories.api.util.JwtTokenUtil;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -19,15 +20,17 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.List;
 
-import static jp.mamekun.memories.api.util.JwtTokenUtil.getUserFromToken;
-
 @RestController
 @RequestMapping("/api/notification")
 public class NotificationController {
+    private final JwtTokenUtil jwtTokenUtil;
     private final NotificationRepository notificationRepository;
     private final UserRepository userRepository;
 
-    public NotificationController(NotificationRepository notificationRepository, UserRepository userRepository) {
+    public NotificationController(
+            JwtTokenUtil jwtTokenUtil, NotificationRepository notificationRepository, UserRepository userRepository
+    ) {
+        this.jwtTokenUtil = jwtTokenUtil;
         this.notificationRepository = notificationRepository;
         this.userRepository = userRepository;
     }
@@ -37,7 +40,7 @@ public class NotificationController {
     public ResponseEntity<NotificationCountResponse> getNotifications(
             @RequestHeader("Authorization") String authorizationHeader
     ) {
-        User user = getUserFromToken(userRepository, authorizationHeader);
+        User user = jwtTokenUtil.getUserFromToken(userRepository, authorizationHeader);
         if (user == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
@@ -61,7 +64,7 @@ public class NotificationController {
     public ResponseEntity<List<NotificationResponse>> getNotifications(
             @PathVariable("sinceStr") String sinceStr, @RequestHeader("Authorization") String authorizationHeader
     ) {
-        User user = getUserFromToken(userRepository, authorizationHeader);
+        User user = jwtTokenUtil.getUserFromToken(userRepository, authorizationHeader);
         if (user == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }

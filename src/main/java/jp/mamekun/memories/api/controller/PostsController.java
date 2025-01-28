@@ -24,6 +24,7 @@ import jp.mamekun.memories.api.repository.LikeRepository;
 import jp.mamekun.memories.api.repository.NotificationRepository;
 import jp.mamekun.memories.api.repository.PostRepository;
 import jp.mamekun.memories.api.repository.UserRepository;
+import jp.mamekun.memories.api.util.JwtTokenUtil;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
@@ -43,8 +44,6 @@ import java.nio.file.Paths;
 import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.UUID;
-
-import static jp.mamekun.memories.api.util.JwtTokenUtil.getUserFromToken;
 
 @RestController
 @RequestMapping("/api/posts")
@@ -68,6 +67,7 @@ public class PostsController {
     @Value("${app.broadcast-posts:false}")
     private boolean broadcastPosts;
 
+    private final JwtTokenUtil jwtTokenUtil;
     private final PostRepository postRepository;
     private final UserRepository userRepository;
     private final LikeRepository likeRepository;
@@ -75,8 +75,12 @@ public class PostsController {
     private final BlockRepository blockRepository;
     private final CommentRepository commentRepository;
 
-    public PostsController(PostRepository postRepository, UserRepository userRepository, LikeRepository likeRepository,
-                           ComplaintRepository complaintRepository, BlockRepository blockRepository, CommentRepository commentRepository, NotificationRepository notificationRepository) {
+    public PostsController(
+            JwtTokenUtil jwtTokenUtil, PostRepository postRepository, UserRepository userRepository,
+            LikeRepository likeRepository, ComplaintRepository complaintRepository, BlockRepository blockRepository,
+            CommentRepository commentRepository, NotificationRepository notificationRepository
+    ) {
+        this.jwtTokenUtil = jwtTokenUtil;
         this.postRepository = postRepository;
         this.userRepository = userRepository;
         this.likeRepository = likeRepository;
@@ -91,7 +95,7 @@ public class PostsController {
     public ResponseEntity<PostResponse> createPost(
             @RequestBody @Valid PostRequest postRequest, @RequestHeader("Authorization") String authorizationHeader
     ) {
-        User user = getUserFromToken(userRepository, authorizationHeader);
+        User user = jwtTokenUtil.getUserFromToken(userRepository, authorizationHeader);
         if (user == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
@@ -132,7 +136,7 @@ public class PostsController {
     public ResponseEntity<List<PostResponse>> getFeed(
             @RequestHeader("Authorization") String authorizationHeader
     ) {
-        User user = getUserFromToken(userRepository, authorizationHeader);
+        User user = jwtTokenUtil.getUserFromToken(userRepository, authorizationHeader);
         if (user == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
@@ -155,7 +159,7 @@ public class PostsController {
     public ResponseEntity<PostResponse> getFeedByPostId(
             @PathVariable("postId") String postId, @RequestHeader("Authorization") String authorizationHeader
     ) {
-        User user = getUserFromToken(userRepository, authorizationHeader);
+        User user = jwtTokenUtil.getUserFromToken(userRepository, authorizationHeader);
         if (user == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
@@ -202,7 +206,7 @@ public class PostsController {
     public ResponseEntity<String> likePost(
             @PathVariable("postId") String postId, @RequestHeader("Authorization") String authorizationHeader
     ) {
-        User user = getUserFromToken(userRepository, authorizationHeader);
+        User user = jwtTokenUtil.getUserFromToken(userRepository, authorizationHeader);
         if (user == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
@@ -222,7 +226,7 @@ public class PostsController {
     public ResponseEntity<String> unlikePost(
             @PathVariable("postId") String postId, @RequestHeader("Authorization") String authorizationHeader
     ) {
-        User user = getUserFromToken(userRepository, authorizationHeader);
+        User user = jwtTokenUtil.getUserFromToken(userRepository, authorizationHeader);
         if (user == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
@@ -237,7 +241,7 @@ public class PostsController {
     public ResponseEntity<String> reportPost(
             @PathVariable("postId") String postId, @RequestHeader("Authorization") String authorizationHeader
     ) {
-        User user = getUserFromToken(userRepository, authorizationHeader);
+        User user = jwtTokenUtil.getUserFromToken(userRepository, authorizationHeader);
         if (user == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
@@ -253,7 +257,7 @@ public class PostsController {
     public ResponseEntity<String> deletePost(
             @PathVariable("postId") String postId, @RequestHeader("Authorization") String authorizationHeader
     ) {
-        User user = getUserFromToken(userRepository, authorizationHeader);
+        User user = jwtTokenUtil.getUserFromToken(userRepository, authorizationHeader);
         if (user == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
@@ -307,7 +311,7 @@ public class PostsController {
             @RequestBody @Valid CommentRequest commentRequest, @PathVariable("postId") String postId,
             @RequestHeader("Authorization") String authorizationHeader
     ) {
-        User user = getUserFromToken(userRepository, authorizationHeader);
+        User user = jwtTokenUtil.getUserFromToken(userRepository, authorizationHeader);
         if (user == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
@@ -352,7 +356,7 @@ public class PostsController {
             @PathVariable("postId") String postId, @PathVariable("commentId") String commentId,
             @RequestHeader("Authorization") String authorizationHeader
     ) {
-        User user = getUserFromToken(userRepository, authorizationHeader);
+        User user = jwtTokenUtil.getUserFromToken(userRepository, authorizationHeader);
         if (user == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
@@ -389,7 +393,7 @@ public class PostsController {
     public ResponseEntity<List<UserResponse>> getLikesByPostId(
             @PathVariable("postId") String postId, @RequestHeader("Authorization") String authorizationHeader
     ) {
-        User user = getUserFromToken(userRepository, authorizationHeader);
+        User user = jwtTokenUtil.getUserFromToken(userRepository, authorizationHeader);
         if (user == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }

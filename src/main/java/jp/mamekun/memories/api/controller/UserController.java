@@ -10,6 +10,7 @@ import jp.mamekun.memories.api.repository.BlockRepository;
 import jp.mamekun.memories.api.repository.FollowRepository;
 import jp.mamekun.memories.api.repository.PostRepository;
 import jp.mamekun.memories.api.repository.UserRepository;
+import jp.mamekun.memories.api.util.JwtTokenUtil;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -26,19 +27,20 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-import static jp.mamekun.memories.api.util.JwtTokenUtil.getUserFromToken;
-
 @RestController
 @RequestMapping("/api/users")
 public class UserController {
+    private final JwtTokenUtil jwtTokenUtil;
     private final UserRepository userRepository;
     private final FollowRepository followRepository;
     private final BlockRepository blockRepository;
     private final PostRepository postRepository;
 
     public UserController(
-            UserRepository userRepository, FollowRepository followRepository, BlockRepository blockRepository,
-            PostRepository postRepository) {
+            JwtTokenUtil jwtTokenUtil, UserRepository userRepository, FollowRepository followRepository,
+            BlockRepository blockRepository, PostRepository postRepository
+    ) {
+        this.jwtTokenUtil = jwtTokenUtil;
         this.userRepository = userRepository;
         this.followRepository = followRepository;
         this.blockRepository = blockRepository;
@@ -47,7 +49,7 @@ public class UserController {
 
     @GetMapping
     public ResponseEntity<List<UserResponse>> getUsers(@RequestHeader("Authorization") String authorizationHeader) {
-        User currentUser = getUserFromToken(userRepository, authorizationHeader);
+        User currentUser = jwtTokenUtil.getUserFromToken(userRepository, authorizationHeader);
         if (currentUser == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
@@ -61,7 +63,7 @@ public class UserController {
 
     @GetMapping("/me")
     public ResponseEntity<UserResponse> getActiveUser(@RequestHeader("Authorization") String authorizationHeader) {
-        User user = getUserFromToken(userRepository, authorizationHeader);
+        User user = jwtTokenUtil.getUserFromToken(userRepository, authorizationHeader);
         if (user == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
@@ -78,7 +80,7 @@ public class UserController {
     public ResponseEntity<UserResponse> updateActiveUser(
             @RequestBody UserRequest userRequest, @RequestHeader("Authorization") String authorizationHeader
     ) {
-        User user = getUserFromToken(userRepository, authorizationHeader);
+        User user = jwtTokenUtil.getUserFromToken(userRepository, authorizationHeader);
         if (user == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
@@ -117,7 +119,7 @@ public class UserController {
     @DeleteMapping("/me")
     @Transactional
     public ResponseEntity<String> deleteActiveUser(@RequestHeader("Authorization") String authorizationHeader) {
-        User user = getUserFromToken(userRepository, authorizationHeader);
+        User user = jwtTokenUtil.getUserFromToken(userRepository, authorizationHeader);
         if (user == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
@@ -132,7 +134,7 @@ public class UserController {
     public ResponseEntity<UserResponse> getUser(
             @RequestHeader("Authorization") String authorizationHeader, @PathVariable("userId") String userId
     ) {
-        User currentUser = getUserFromToken(userRepository, authorizationHeader);
+        User currentUser = jwtTokenUtil.getUserFromToken(userRepository, authorizationHeader);
         if (currentUser == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
@@ -178,7 +180,7 @@ public class UserController {
     public ResponseEntity<String> followUser(
             @RequestHeader("Authorization") String authorizationHeader, @PathVariable("userId") String userId
     ) {
-        User currentUser = getUserFromToken(userRepository, authorizationHeader);
+        User currentUser = jwtTokenUtil.getUserFromToken(userRepository, authorizationHeader);
         if (currentUser == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
@@ -208,7 +210,7 @@ public class UserController {
     public ResponseEntity<String> unfollowUser(
             @RequestHeader("Authorization") String authorizationHeader, @PathVariable("userId") String userId
     ) {
-        User currentUser = getUserFromToken(userRepository, authorizationHeader);
+        User currentUser = jwtTokenUtil.getUserFromToken(userRepository, authorizationHeader);
         if (currentUser == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
@@ -233,7 +235,7 @@ public class UserController {
     public ResponseEntity<String> blockUser(
             @PathVariable("userId") String userId, @RequestHeader("Authorization") String authorizationHeader
     ) {
-        User user = getUserFromToken(userRepository, authorizationHeader);
+        User user = jwtTokenUtil.getUserFromToken(userRepository, authorizationHeader);
         if (user == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }

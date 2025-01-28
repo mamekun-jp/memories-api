@@ -4,6 +4,7 @@ import jp.mamekun.memories.api.model.User;
 import jp.mamekun.memories.api.model.UserKey;
 import jp.mamekun.memories.api.repository.UserKeyRepository;
 import jp.mamekun.memories.api.repository.UserRepository;
+import jp.mamekun.memories.api.util.JwtTokenUtil;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -18,15 +19,17 @@ import java.time.ZonedDateTime;
 import java.util.Optional;
 import java.util.UUID;
 
-import static jp.mamekun.memories.api.util.JwtTokenUtil.getUserFromToken;
-
 @RestController
 @RequestMapping("/api/key")
 public class KeyController {
+    private final JwtTokenUtil jwtTokenUtil;
     private final UserRepository userRepository;
     private final UserKeyRepository userKeyRepository;
 
-    public KeyController(UserRepository userRepository, UserKeyRepository userKeyRepository) {
+    public KeyController(
+            JwtTokenUtil jwtTokenUtil, UserRepository userRepository, UserKeyRepository userKeyRepository
+    ) {
+        this.jwtTokenUtil = jwtTokenUtil;
         this.userRepository = userRepository;
         this.userKeyRepository = userKeyRepository;
     }
@@ -35,7 +38,7 @@ public class KeyController {
     public ResponseEntity<Void> uploadPublicKey(
             @RequestHeader("Authorization") String authorizationHeader, @RequestBody String publicKey
     ) {
-        User user = getUserFromToken(userRepository, authorizationHeader);
+        User user = jwtTokenUtil.getUserFromToken(userRepository, authorizationHeader);
         if (user == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
@@ -45,10 +48,6 @@ public class KeyController {
             UserKey userKey = new UserKey(user, publicKey, ZonedDateTime.now());
             userKeyRepository.save(userKey);
         } else {
-            /*UserKey userKey = userKeyOpt.get();
-            userKey.setContent(publicKey);
-            userKey.setUpdatedAt(ZonedDateTime.now());
-            userKeyRepository.save(userKey);*/
             return ResponseEntity.status(HttpStatus.ALREADY_REPORTED).build();
         }
 

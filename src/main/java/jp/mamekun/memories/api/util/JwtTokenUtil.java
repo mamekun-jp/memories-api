@@ -3,91 +3,86 @@ package jp.mamekun.memories.api.util;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
+import jakarta.annotation.PostConstruct;
 import jp.mamekun.memories.api.model.User;
 import jp.mamekun.memories.api.repository.UserRepository;
-import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 
 import javax.crypto.SecretKey;
-import java.util.Base64;
+import java.nio.charset.StandardCharsets;
 import java.util.Date;
-import java.util.Optional;
 
-@NoArgsConstructor(access = AccessLevel.PRIVATE)
+import org.springframework.stereotype.Component;
+
+@Component
+@NoArgsConstructor(access = lombok.AccessLevel.PRIVATE) // Private constructor to enforce singleton usage
 public class JwtTokenUtil {
 
-    private static final String SECRET_KEY = "szNjWVZXMoDDgH1Xl7N9dyWZYgMn3TXhbeDoCIwjFzY=";  // Replace with your actual secret key
-    private static final long EXPIRATION_TIME = 86400000L; // 24 hours in milliseconds
+    @Value("${app.jwt.secret:szNjWVZXMoDDgH1Xl7N9dyWZYgMn3TXhbeDoCIwjFzY=}")
+    private String secretKey;  // Spring-injected value
 
-    // Generate JWT Token
-    public static String generateToken(String username) {
-        Date expirationDate = new Date(System.currentTimeMillis() + EXPIRATION_TIME);
+    @Value("${app.jwt.expiration:86400000}")
+    private long expirationTime; // Expiration time in milliseconds
 
-        // Generate SecretKey using the updated method
-        SecretKey secretKey = Keys.hmacShaKeyFor(Base64.getDecoder().decode(SECRET_KEY));
+    private SecretKey key;
 
-        // Build the token using JwtBuilder
+    @PostConstruct
+    public void init() {
+        if (secretKey == null || secretKey.isEmpty()) {
+            throw new IllegalStateException("JWT secret key is not set properly!");
+        }
+        this.key = Keys.hmacShaKeyFor(secretKey.getBytes(StandardCharsets.UTF_8));
+    }
+
+    public String generateToken(String username) {
+        Date expirationDate = new Date(System.currentTimeMillis() + expirationTime);
+
         return Jwts.builder()
-                .claims(Jwts.claims().subject(username).build())  // Set subject as the username
-                .issuedAt(new Date())  // Set issued at date
-                .expiration(expirationDate)  // Set expiration date
-                .signWith(secretKey)  // Sign with the secret key using HMAC
-                .compact();  // Return the compact JWT token
+                .subject(username)
+                .issuedAt(new Date())
+                .expiration(expirationDate)
+                .signWith(key)
+                .compact();
     }
 
-    // Validate JWT Token and parse claims
-    public static Claims validateToken(String token) {
+    public Claims validateToken(String token) {
         try {
-            // Decode the secret key
-            SecretKey secretKey = Keys.hmacShaKeyFor(Base64.getDecoder().decode(SECRET_KEY));
-
-            // Parse the JWT and get the claims
             return Jwts.parser()
-                    .verifyWith(secretKey)  // Set the signing key
+                    .verifyWith(key)
                     .build()
-                    .parseSignedClaims(token)  // Parse the JWT token
-                    .getPayload();  // Return the claims body
+                    .parseSignedClaims(token)
+                    .getPayload();
         } catch (Exception e) {
-            // Handle the case where the token is invalid
-            return null;  // Return null if token is invalid
+            return null; // Return null if the token is invalid
         }
     }
 
-    // Extract username from JWT token
-    public static String extractUsername(String token) {
+    public String extractUsername(String token) {
         Claims claims = validateToken(token);
-        return claims != null ? claims.getSubject() : null;  // Return the username from the claims
+        return claims != null ? claims.getSubject() : null;
     }
 
-    // Check if the token is expired
-    public static boolean isTokenExpired(String token) {
+    public boolean isTokenExpired(String token) {
         Claims claims = validateToken(token);
-        if (claims != null) {
-            Date expiration = claims.getExpiration();
-            return expiration.before(new Date());  // Check if the token is expired
-        }
-        return true;  // Token is expired if claims are null
+        return claims != null && claims.getExpiration().before(new Date());
     }
 
-    public static String extractToken(String authorizationHeader) {
+    public String extractToken(String authorizationHeader) {
         if (authorizationHeader != null && authorizationHeader.startsWith("Bearer ")) {
-            return authorizationHeader.substring(7); // Remove the "Bearer " prefix
+            return authorizationHeader.substring(7);
         }
         throw new IllegalArgumentException("Invalid Authorization header");
     }
 
-    public static User getUserFromToken(UserRepository userRepository, String authorizationHeader) {
-        // Extract the token from the "Bearer <token>" header
+    public User getUserFromToken(UserRepository userRepository, String authorizationHeader) {
         String token = extractToken(authorizationHeader);
-
-        // Use JwtTokenUtil to extract the username
         String username = extractUsername(token);
 
         if (username == null) {
-            return null; // Return 401 if the token is invalid
+            return null; // Return null if the token is invalid
         }
 
-        Optional<User> userOpt = userRepository.findByEmail(username);
-        return userOpt.orElse(null);
+        return userRepository.findByEmail(username).orElse(null);
     }
 }

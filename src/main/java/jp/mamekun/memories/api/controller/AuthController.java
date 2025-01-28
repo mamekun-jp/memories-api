@@ -23,14 +23,16 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/auth")
 public class AuthController {
 
+    private final JwtTokenUtil jwtTokenUtil;
     private final AuthenticationManager authenticationManager;
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
 
     public AuthController(
-            AuthenticationManager authenticationManager, UserRepository userRepository,
+            JwtTokenUtil jwtTokenUtil, AuthenticationManager authenticationManager, UserRepository userRepository,
             PasswordEncoder passwordEncoder
     ) {
+        this.jwtTokenUtil = jwtTokenUtil;
         this.authenticationManager = authenticationManager;
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
@@ -54,7 +56,7 @@ public class AuthController {
         userRepository.save(newUser);
 
         // Generate JWT Token
-        String token = JwtTokenUtil.generateToken(signupRequest.getEmail());
+        String token = jwtTokenUtil.generateToken(signupRequest.getEmail());
 
         // Return the token wrapped in LoginResponse
         return ResponseEntity.ok(new LoginResponse(token));
@@ -73,7 +75,7 @@ public class AuthController {
 
         // Generate JWT Token
         UserDetails userDetails = (UserDetails) authentication.getPrincipal();
-        String token = JwtTokenUtil.generateToken(userDetails.getUsername());
+        String token = jwtTokenUtil.generateToken(userDetails.getUsername());
 
         // Return the token wrapped in LoginResponse
         return ResponseEntity.ok(new LoginResponse(token));

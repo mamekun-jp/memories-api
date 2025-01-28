@@ -15,14 +15,16 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 
-import static jp.mamekun.memories.api.util.JwtTokenUtil.extractToken;
-
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
+    private final JwtTokenUtil jwtTokenUtil;
     private final UserDetailService userDetailService;
 
-    public JwtAuthenticationFilter(UserDetailService userDetailService) {
+    public JwtAuthenticationFilter(
+            JwtTokenUtil jwtTokenUtil, UserDetailService userDetailService
+    ) {
+        this.jwtTokenUtil = jwtTokenUtil;
         this.userDetailService = userDetailService;
     }
 
@@ -32,13 +34,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String authHeader = request.getHeader("Authorization");
 
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
-            String token = extractToken(authHeader);
-            String username = JwtTokenUtil.extractUsername(token);
+            String token = jwtTokenUtil.extractToken(authHeader);
+            String username = jwtTokenUtil.extractUsername(token);
 
             if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
                 UserDetails userDetails = userDetailService.loadUserByUsername(username);
 
-                if (JwtTokenUtil.validateToken(token) != null) {
+                if (jwtTokenUtil.validateToken(token) != null) {
                     UsernamePasswordAuthenticationToken authentication =
                             new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
                     authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));

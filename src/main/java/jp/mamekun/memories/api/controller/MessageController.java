@@ -12,6 +12,7 @@ import jp.mamekun.memories.api.model.enums.NotificationTypeEnum;
 import jp.mamekun.memories.api.repository.MessageRepository;
 import jp.mamekun.memories.api.repository.NotificationRepository;
 import jp.mamekun.memories.api.repository.UserRepository;
+import jp.mamekun.memories.api.util.JwtTokenUtil;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -27,16 +28,19 @@ import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.UUID;
 
-import static jp.mamekun.memories.api.util.JwtTokenUtil.getUserFromToken;
-
 @RestController
 @RequestMapping("/api/message")
 public class MessageController {
+    private final JwtTokenUtil jwtTokenUtil;
     private final UserRepository userRepository;
     private final MessageRepository messageRepository;
     private final NotificationRepository notificationRepository;
 
-    public MessageController(UserRepository userRepository, MessageRepository messageRepository, NotificationRepository notificationRepository) {
+    public MessageController(
+            JwtTokenUtil jwtTokenUtil, UserRepository userRepository,
+            MessageRepository messageRepository, NotificationRepository notificationRepository
+    ) {
+        this.jwtTokenUtil = jwtTokenUtil;
         this.userRepository = userRepository;
         this.messageRepository = messageRepository;
         this.notificationRepository = notificationRepository;
@@ -47,7 +51,7 @@ public class MessageController {
     public ResponseEntity<String> newMessage(
             @RequestBody @Valid MessageRequest messageRequest, @RequestHeader("Authorization") String authorizationHeader
     ) {
-        User user = getUserFromToken(userRepository, authorizationHeader);
+        User user = jwtTokenUtil.getUserFromToken(userRepository, authorizationHeader);
         if (user == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
@@ -81,7 +85,7 @@ public class MessageController {
     public ResponseEntity<List<UserResponse>> getMessages(
             @RequestHeader("Authorization") String authorizationHeader
     ) {
-        User user = getUserFromToken(userRepository, authorizationHeader);
+        User user = jwtTokenUtil.getUserFromToken(userRepository, authorizationHeader);
         if (user == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
@@ -96,7 +100,7 @@ public class MessageController {
     public ResponseEntity<List<MessageResponse>> getMessagesWithSender(
             @PathVariable("senderId") String senderId, @RequestHeader("Authorization") String authorizationHeader
     ) {
-        User user = getUserFromToken(userRepository, authorizationHeader);
+        User user = jwtTokenUtil.getUserFromToken(userRepository, authorizationHeader);
         if (user == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
@@ -114,7 +118,7 @@ public class MessageController {
     public ResponseEntity<String> deleteMessage(
             @PathVariable("messageId") String messageId, @RequestHeader("Authorization") String authorizationHeader
     ) {
-        User user = getUserFromToken(userRepository, authorizationHeader);
+        User user = jwtTokenUtil.getUserFromToken(userRepository, authorizationHeader);
         if (user == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
