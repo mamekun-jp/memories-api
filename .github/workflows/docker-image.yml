@@ -13,6 +13,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+    - name: Build the application (e.g., with Gradle or Maven)
+      run: ./gradlew build  # Ensure the build directory is generated
+    
     - uses: actions/checkout@v4
     - name: Build the Docker image
       run: docker build . --file Dockerfile --tag my-image-name:$(date +%s)
@@ -26,9 +29,6 @@ jobs:
     - name: Extract Git Commit SHA
       id: vars
       run: echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
-
-    - name: Build the application (e.g., with Gradle or Maven)
-      run: ./gradlew build  # Ensure the build directory is generated
 
     - name: Build and Push Docker Image
       uses: docker/build-push-action@v5
