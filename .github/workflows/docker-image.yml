@@ -8,12 +8,18 @@ on:
 
 jobs:
   build-and-push:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest  # Use GitHub's runner
     container: cimg/openjdk:21.0.5-node  # Use OpenJDK 21 with Node.js
 
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
+
+      - name: Set up Docker environment (fix permissions)
+        run: |
+          sudo groupadd docker || true
+          sudo usermod -aG docker $USER
+          sudo service docker start
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
