@@ -2,37 +2,48 @@ name: Docker Image CI
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
   pull_request:
-    branches: [ "main" ]
+    branches: ["main"]
 
 jobs:
-
   build-and-push:
-
     runs-on: ubuntu-latest
 
     steps:
+    # Checkout the code first to ensure the repository files are available
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    # Set up Gradle
     - name: Set up Gradle
       uses: gradle/gradle-build-action@v2
-    
-    - name: Build the application (e.g., with Gradle or Maven)
-      run: ./gradlew build  # Ensure the build directory is generated
-    
-    - uses: actions/checkout@v4
+
+    # Ensure gradlew is executable if needed
+    - name: Ensure gradlew is executable
+      run: chmod +x ./gradlew
+
+    # Build the application (with Gradle)
+    - name: Build the application with Gradle
+      run: ./gradlew build
+
+    # Build the Docker image (if Dockerfile is in the root)
     - name: Build the Docker image
       run: docker build . --file Dockerfile --tag my-image-name:$(date +%s)
 
+    # Log in to Docker Hub using credentials stored in GitHub Secrets
     - name: Log in to Docker Hub
       uses: docker/login-action@v3
       with:
         username: ${{ secrets.DOCKER_HUB_USERNAME }}
         password: ${{ secrets.DOCKER_HUB_PASSWORD }}
 
+    # Extract Git Commit SHA for versioning
     - name: Extract Git Commit SHA
       id: vars
       run: echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
 
+    # Build and push the Docker image to Docker Hub
     - name: Build and Push Docker Image
       uses: docker/build-push-action@v5
       with:
@@ -42,5 +53,6 @@ jobs:
           mamekunjp/memories-api:latest
           mamekunjp/memories-api:${{ env.sha_short }}
 
+    # Verify the image is successfully pushed by pulling it back
     - name: Verify Image on Docker Hub
       run: docker pull mamekunjp/memories-api:latest
