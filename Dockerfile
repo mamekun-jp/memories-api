@@ -11,4 +11,4 @@ USER circleci
 
 LABEL maintainer=memories-api
 COPY build build
-ENTRYPOINT ["java","-jar","build/libs/memories-api-0.0.1-SNAPSHOT.jar"]
+ENTRYPOINT ["java","-jar","build/libs/memories-api-0.1.1-SNAPSHOT.jar"]
