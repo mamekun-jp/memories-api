@@ -12,6 +12,7 @@ You may create your own server within a few steps by using Docker!
 ```bash
 docker run -d \
   --name memories-api \
+  --platform linux/amd64 \
   -p 9090:9090 \
   -v /data/memories-img:/data/memories-img \
   -v /data/memories-vid:/data/memories-vid \
