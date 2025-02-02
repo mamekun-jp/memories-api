@@ -74,3 +74,10 @@ services:
         source: /data/memories-db
         target: /data/memories-db
 ```
+
+Server settings can be easily shared with the audience by using the URL format:
+```
+memories-app://addServer?name={SERVER_NAME}&address=https://{YOUR_SERVER_ADDRESS}&key={SERVER_KEY}
+```
+
+This will automatically configure the app to use the given server for the backend.
