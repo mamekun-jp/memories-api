@@ -3,7 +3,7 @@ Memories API is the backend source code for [MyMemoriesApp](https://apps.apple.c
 
 Check the app at Apple Store: https://apps.apple.com/us/app/mymemoriesapp/id6740176333
 
-[MyMemoriesApp](https://apps.apple.com/us/app/mymemoriesapp/id6740176333) is an iOS project which allows you to create closed/public server to share photos and videoes within the audience of your choice.
+[MyMemoriesApp](https://apps.apple.com/us/app/mymemoriesapp/id6740176333) is an iOS project which allows you to create closed/public server to share photos and videos within the audience of your choice.
 
 [MyMemoriesApp](https://apps.apple.com/us/app/mymemoriesapp/id6740176333) source code will become available soon!
 
