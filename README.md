@@ -38,7 +38,7 @@ services:
     container_name: memories-server
     ports:
       - 9090:9090
-    image: mamekun/memories-server
+    image: mamekunjp/memories-api
     environment:
       # Database Profile (Switch between H2 and PostgreSQL)
       - SPRING_PROFILES_ACTIVE=h2  # Change to "postgres" to use PostgreSQL
