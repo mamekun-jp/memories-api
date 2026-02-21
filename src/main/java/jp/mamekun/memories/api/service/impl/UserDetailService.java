@@ -1,4 +1,4 @@
-package jp.mamekun.memories.api.service;
+package jp.mamekun.memories.api.service.impl;
 
 import jp.mamekun.memories.api.repository.UserRepository;
 import org.springframework.security.core.userdetails.User;

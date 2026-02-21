@@ -1,4 +1,4 @@
-FROM cimg/openjdk:21.0.5-node
+FROM cimg/openjdk:21.0
 
 # Switch to root user to install FFmpeg
 USER root
@@ -11,4 +11,4 @@ USER circleci
 
 LABEL maintainer=memories-api
 COPY build build
-ENTRYPOINT ["java","-jar","build/libs/memories-api-0.1.1-SNAPSHOT.jar"]
+ENTRYPOINT ["java","-jar","build/libs/memories-api-0.2.1-SNAPSHOT.jar"]

@@ -1,7 +1,7 @@
 package jp.mamekun.memories.api.config;
 
 import jp.mamekun.memories.api.helper.JwtAuthenticationFilter;
-import jp.mamekun.memories.api.service.UserDetailService;
+import jp.mamekun.memories.api.service.impl.UserDetailService;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;

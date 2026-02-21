@@ -5,8 +5,10 @@ import jakarta.validation.Valid;
 import jp.mamekun.memories.api.model.User;
 import jp.mamekun.memories.api.model.api.LoginRequest;
 import jp.mamekun.memories.api.model.api.LoginResponse;
+import jp.mamekun.memories.api.model.api.ResetPasswordRequest;
 import jp.mamekun.memories.api.model.api.SignupRequest;
 import jp.mamekun.memories.api.repository.UserRepository;
+import jp.mamekun.memories.api.service.EmailService;
 import jp.mamekun.memories.api.util.JwtTokenUtil;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -27,15 +29,17 @@ public class AuthController {
     private final AuthenticationManager authenticationManager;
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final EmailService emailService;
 
     public AuthController(
             JwtTokenUtil jwtTokenUtil, AuthenticationManager authenticationManager, UserRepository userRepository,
-            PasswordEncoder passwordEncoder
+            PasswordEncoder passwordEncoder, EmailService emailService
     ) {
         this.jwtTokenUtil = jwtTokenUtil;
         this.authenticationManager = authenticationManager;
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
+        this.emailService = emailService;
     }
 
     // User Registration
@@ -79,5 +83,16 @@ public class AuthController {
 
         // Return the token wrapped in LoginResponse
         return ResponseEntity.ok(new LoginResponse(token));
+    }
+
+    // Password reset request
+    @PostMapping({"/forgot-password"})
+    public ResponseEntity<String> passwordResetRequest(
+            @RequestBody @Valid ResetPasswordRequest resetPasswordRequest
+    ) {
+        // TODO: Finish the logic
+
+        // Return the token wrapped in LoginResponse
+        return ResponseEntity.ok("OK");
     }
 }

@@ -157,7 +157,7 @@ public class PostsController {
 
     @GetMapping("/feed/{postId}")
     public ResponseEntity<PostResponse> getFeedByPostId(
-            @PathVariable("postId") String postId, @RequestHeader("Authorization") String authorizationHeader
+            @PathVariable String postId, @RequestHeader("Authorization") String authorizationHeader
     ) {
         User user = jwtTokenUtil.getUserFromToken(userRepository, authorizationHeader);
         if (user == null) {
@@ -186,7 +186,7 @@ public class PostsController {
 
     @GetMapping("/user/{userId}")
     public ResponseEntity<List<PostResponse>> getUserFeed(
-            @PathVariable("userId") String userId, @RequestHeader("Authorization") String authorizationHeader
+            @PathVariable String userId, @RequestHeader("Authorization") String authorizationHeader
     ) {
         User user = new User();
         user.setId(UUID.fromString(userId));
@@ -204,7 +204,7 @@ public class PostsController {
     @GetMapping("/like/{postId}")
     @Transactional
     public ResponseEntity<String> likePost(
-            @PathVariable("postId") String postId, @RequestHeader("Authorization") String authorizationHeader
+            @PathVariable String postId, @RequestHeader("Authorization") String authorizationHeader
     ) {
         User user = jwtTokenUtil.getUserFromToken(userRepository, authorizationHeader);
         if (user == null) {
@@ -224,7 +224,7 @@ public class PostsController {
     @GetMapping("/unlike/{postId}")
     @Transactional
     public ResponseEntity<String> unlikePost(
-            @PathVariable("postId") String postId, @RequestHeader("Authorization") String authorizationHeader
+            @PathVariable String postId, @RequestHeader("Authorization") String authorizationHeader
     ) {
         User user = jwtTokenUtil.getUserFromToken(userRepository, authorizationHeader);
         if (user == null) {
@@ -239,7 +239,7 @@ public class PostsController {
     @GetMapping("/report/{postId}")
     @Transactional
     public ResponseEntity<String> reportPost(
-            @PathVariable("postId") String postId, @RequestHeader("Authorization") String authorizationHeader
+            @PathVariable String postId, @RequestHeader("Authorization") String authorizationHeader
     ) {
         User user = jwtTokenUtil.getUserFromToken(userRepository, authorizationHeader);
         if (user == null) {
@@ -255,7 +255,7 @@ public class PostsController {
     @DeleteMapping("/delete/{postId}")
     @Transactional
     public ResponseEntity<String> deletePost(
-            @PathVariable("postId") String postId, @RequestHeader("Authorization") String authorizationHeader
+            @PathVariable String postId, @RequestHeader("Authorization") String authorizationHeader
     ) {
         User user = jwtTokenUtil.getUserFromToken(userRepository, authorizationHeader);
         if (user == null) {
@@ -294,7 +294,7 @@ public class PostsController {
 
     @GetMapping("/comments/{postId}")
     @Transactional
-    public ResponseEntity<List<CommentResponse>> getComments(@PathVariable("postId") String postId) {
+    public ResponseEntity<List<CommentResponse>> getComments(@PathVariable String postId) {
         List<CommentResponse> response = commentRepository.findByPostId(UUID.fromString(postId))
                 .stream().map(comment -> new CommentResponse(
                         comment.getId().toString(), comment.getPostId().toString(),
@@ -308,7 +308,7 @@ public class PostsController {
     @PostMapping("/comments/{postId}")
     @Transactional
     public ResponseEntity<String> addComment(
-            @RequestBody @Valid CommentRequest commentRequest, @PathVariable("postId") String postId,
+            @RequestBody @Valid CommentRequest commentRequest, @PathVariable String postId,
             @RequestHeader("Authorization") String authorizationHeader
     ) {
         User user = jwtTokenUtil.getUserFromToken(userRepository, authorizationHeader);
@@ -353,7 +353,7 @@ public class PostsController {
     @DeleteMapping("/comments/{postId}/{commentId}")
     @Transactional
     public ResponseEntity<String> deleteComment(
-            @PathVariable("postId") String postId, @PathVariable("commentId") String commentId,
+            @PathVariable String postId, @PathVariable String commentId,
             @RequestHeader("Authorization") String authorizationHeader
     ) {
         User user = jwtTokenUtil.getUserFromToken(userRepository, authorizationHeader);
@@ -391,7 +391,7 @@ public class PostsController {
 
     @GetMapping("/likes/{postId}")
     public ResponseEntity<List<UserResponse>> getLikesByPostId(
-            @PathVariable("postId") String postId, @RequestHeader("Authorization") String authorizationHeader
+            @PathVariable String postId, @RequestHeader("Authorization") String authorizationHeader
     ) {
         User user = jwtTokenUtil.getUserFromToken(userRepository, authorizationHeader);
         if (user == null) {
