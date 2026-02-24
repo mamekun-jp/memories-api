@@ -118,7 +118,12 @@ public class PostsController {
         if (broadcastPosts) {
             Notification notification = new Notification();
             notification.setTargetId(savedPost.getId());
-            notification.setContent(NotificationTypeEnum.NEW_POST.name());
+            if (postRequest.getPostType().equals(PostTypeEnum.STORY_IMAGE.name()) ||
+            postRequest.getPostType().equals(PostTypeEnum.STORY_VIDEO.name())) {
+                notification.setContent(NotificationTypeEnum.NEW_STORY.name());
+            } else {
+                notification.setContent(NotificationTypeEnum.NEW_POST.name());
+            }
             notification.setIsPublic(true);
             notification.setTimestamp(ZonedDateTime.now());
             notification.setOwner(user);
