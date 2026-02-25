@@ -118,8 +118,7 @@ public class PostsController {
         if (broadcastPosts) {
             Notification notification = new Notification();
             notification.setTargetId(savedPost.getId());
-            if (postRequest.getPostType().equals(PostTypeEnum.STORY_IMAGE.name()) ||
-            postRequest.getPostType().equals(PostTypeEnum.STORY_VIDEO.name())) {
+            if (postRequest.getPostType().equals(PostTypeEnum.STORY.name())) {
                 notification.setContent(NotificationTypeEnum.NEW_STORY.name());
             } else {
                 notification.setContent(NotificationTypeEnum.NEW_POST.name());
