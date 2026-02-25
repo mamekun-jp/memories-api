@@ -2,6 +2,7 @@ package jp.mamekun.memories.api.model.api;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import jakarta.validation.constraints.NotBlank;
+import jp.mamekun.memories.api.model.enums.PostTypeEnum;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 
