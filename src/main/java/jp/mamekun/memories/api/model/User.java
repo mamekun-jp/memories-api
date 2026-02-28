@@ -41,6 +41,7 @@ public class User {
     private String profileImageUrl;
     private String fullName;
     private String bio;
+    private String deviceToken;
     private ZonedDateTime lastNotificationCheck;
 
     public User(Boolean isApproved, boolean isDeleted, String username, String email, String password) {

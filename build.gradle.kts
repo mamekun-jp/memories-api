@@ -29,6 +29,7 @@ dependencies {
 
 	implementation("io.jsonwebtoken:jjwt:0.13.0")
 	implementation("com.drewnoakes:metadata-extractor:2.19.0")
+	implementation("com.eatthepath:pushy:0.15.4")
 	runtimeOnly("org.postgresql:postgresql")
 	runtimeOnly("com.h2database:h2")
 

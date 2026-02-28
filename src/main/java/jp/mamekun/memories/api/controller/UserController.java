@@ -4,6 +4,7 @@ import jakarta.transaction.Transactional;
 import jp.mamekun.memories.api.model.Block;
 import jp.mamekun.memories.api.model.Follow;
 import jp.mamekun.memories.api.model.User;
+import jp.mamekun.memories.api.model.api.TokenRegistrationRequest;
 import jp.mamekun.memories.api.model.api.UserRequest;
 import jp.mamekun.memories.api.model.api.UserResponse;
 import jp.mamekun.memories.api.repository.BlockRepository;
@@ -16,6 +17,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -126,6 +128,26 @@ public class UserController {
 
         postRepository.deleteByOwner(user);
         userRepository.delete(user);
+
+        return ResponseEntity.ok("OK");
+    }
+
+    @PostMapping("/me/update-token")
+    @Transactional
+    public ResponseEntity<String> updateToken(
+            @RequestBody TokenRegistrationRequest request, @RequestHeader("Authorization") String authorizationHeader
+    ) {
+        User user = jwtTokenUtil.getUserFromToken(userRepository, authorizationHeader);
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        if (request.getToken().isBlank()) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        }
+
+        user.setDeviceToken(request.getToken());
+        userRepository.save(user);
 
         return ResponseEntity.ok("OK");
     }
