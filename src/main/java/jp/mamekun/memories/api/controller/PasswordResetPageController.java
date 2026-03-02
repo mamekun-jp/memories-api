@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 public class PasswordResetPageController {
 
-    @GetMapping(value = "/reset-password", produces = MediaType.TEXT_HTML_VALUE)
+    @GetMapping(value = "/api/auth/reset-password", produces = MediaType.TEXT_HTML_VALUE)
     public ResponseEntity<String> resetPasswordPage(
             @RequestParam(name = "token", required = false) String token
     ) {
