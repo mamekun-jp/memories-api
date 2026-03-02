@@ -1,5 +1,6 @@
 package jp.mamekun.memories.api.model;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
@@ -26,6 +27,7 @@ public class Post {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
     private Boolean isDeleted;
+    @Column(columnDefinition = "TEXT")
     private String caption;
     private Integer likes;
     private String imageUrl;
