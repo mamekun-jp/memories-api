@@ -65,8 +65,8 @@ public class ImageController {
 
     @GetMapping({"/{imgName}.{ext}", "/th/{imgName}.{ext}"})
     public ResponseEntity<Resource> serveImageOrThumb(
-            @PathVariable("imgName") String imgName,
-            @PathVariable("ext") String ext,
+            @PathVariable String imgName,
+            @PathVariable String ext,
             HttpServletRequest request) {
         try {
             // Determine if the request is for a thumbnail or full image

@@ -98,7 +98,7 @@ public class MessageController {
 
     @GetMapping("/with/{senderId}")
     public ResponseEntity<List<MessageResponse>> getMessagesWithSender(
-            @PathVariable("senderId") String senderId, @RequestHeader("Authorization") String authorizationHeader
+            @PathVariable String senderId, @RequestHeader("Authorization") String authorizationHeader
     ) {
         User user = jwtTokenUtil.getUserFromToken(userRepository, authorizationHeader);
         if (user == null) {
@@ -116,7 +116,7 @@ public class MessageController {
     @DeleteMapping("/{messageId}")
     @Transactional
     public ResponseEntity<String> deleteMessage(
-            @PathVariable("messageId") String messageId, @RequestHeader("Authorization") String authorizationHeader
+            @PathVariable String messageId, @RequestHeader("Authorization") String authorizationHeader
     ) {
         User user = jwtTokenUtil.getUserFromToken(userRepository, authorizationHeader);
         if (user == null) {

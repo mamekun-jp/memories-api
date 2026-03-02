@@ -62,7 +62,7 @@ public class NotificationController {
     @GetMapping("/since/{sinceStr}")
     @Transactional
     public ResponseEntity<List<NotificationResponse>> getNotifications(
-            @PathVariable("sinceStr") String sinceStr, @RequestHeader("Authorization") String authorizationHeader
+            @PathVariable String sinceStr, @RequestHeader("Authorization") String authorizationHeader
     ) {
         User user = jwtTokenUtil.getUserFromToken(userRepository, authorizationHeader);
         if (user == null) {

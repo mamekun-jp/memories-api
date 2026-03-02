@@ -178,7 +178,7 @@ public class UserController {
     }
 
     @GetMapping("/followers/{userId}")
-    public ResponseEntity<List<UserResponse>> getFollowers(@PathVariable("userId") String userId) {
+    public ResponseEntity<List<UserResponse>> getFollowers(@PathVariable String userId) {
         List<UserResponse> response = followRepository.findFollowersByFolloweeId(UUID.fromString(userId))
                 .stream().map(user ->
                 new UserResponse(user.getId().toString(), user.getUsername(), user.getProfileImageUrl(),
@@ -188,7 +188,7 @@ public class UserController {
     }
 
     @GetMapping("/following/{userId}")
-    public ResponseEntity<List<UserResponse>> getFollowing(@PathVariable("userId") String userId) {
+    public ResponseEntity<List<UserResponse>> getFollowing(@PathVariable String userId) {
         List<UserResponse> response = followRepository.findAllByFollowerId(UUID.fromString(userId))
                 .stream().map(user ->
                 new UserResponse(user.getId().toString(), user.getUsername(), user.getProfileImageUrl(),
@@ -200,7 +200,7 @@ public class UserController {
     @GetMapping("/follow/{userId}")
     @Transactional
     public ResponseEntity<String> followUser(
-            @RequestHeader("Authorization") String authorizationHeader, @PathVariable("userId") String userId
+            @RequestHeader("Authorization") String authorizationHeader, @PathVariable String userId
     ) {
         User currentUser = jwtTokenUtil.getUserFromToken(userRepository, authorizationHeader);
         if (currentUser == null) {
@@ -230,7 +230,7 @@ public class UserController {
     @GetMapping("/unfollow/{userId}")
     @Transactional
     public ResponseEntity<String> unfollowUser(
-            @RequestHeader("Authorization") String authorizationHeader, @PathVariable("userId") String userId
+            @RequestHeader("Authorization") String authorizationHeader, @PathVariable String userId
     ) {
         User currentUser = jwtTokenUtil.getUserFromToken(userRepository, authorizationHeader);
         if (currentUser == null) {
@@ -255,7 +255,7 @@ public class UserController {
     @GetMapping("/block/{userId}")
     @Transactional
     public ResponseEntity<String> blockUser(
-            @PathVariable("userId") String userId, @RequestHeader("Authorization") String authorizationHeader
+            @PathVariable String userId, @RequestHeader("Authorization") String authorizationHeader
     ) {
         User user = jwtTokenUtil.getUserFromToken(userRepository, authorizationHeader);
         if (user == null) {

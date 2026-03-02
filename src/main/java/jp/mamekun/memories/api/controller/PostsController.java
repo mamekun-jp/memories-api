@@ -1,5 +1,6 @@
 package jp.mamekun.memories.api.controller;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import jakarta.transaction.Transactional;
 import jakarta.validation.Valid;
 import jp.mamekun.memories.api.model.Block;
@@ -24,6 +25,8 @@ import jp.mamekun.memories.api.repository.LikeRepository;
 import jp.mamekun.memories.api.repository.NotificationRepository;
 import jp.mamekun.memories.api.repository.PostRepository;
 import jp.mamekun.memories.api.repository.UserRepository;
+import jp.mamekun.memories.api.service.PushNotificationService;
+import jp.mamekun.memories.api.service.UserService;
 import jp.mamekun.memories.api.util.JwtTokenUtil;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.beans.factory.annotation.Value;
@@ -43,6 +46,7 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.time.ZonedDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @RestController
@@ -50,6 +54,7 @@ import java.util.UUID;
 @Log4j2
 public class PostsController {
     private final NotificationRepository notificationRepository;
+    private final UserService userService;
     // Define the directory where files will be saved
     @Value("${image.path:'/data/memories-img'}")
     private String uploadDir;
@@ -67,6 +72,9 @@ public class PostsController {
     @Value("${app.broadcast-posts:false}")
     private boolean broadcastPosts;
 
+    @Value("${app.push-enabled:false}")
+    private boolean pushEnabled;
+
     private final JwtTokenUtil jwtTokenUtil;
     private final PostRepository postRepository;
     private final UserRepository userRepository;
@@ -74,12 +82,14 @@ public class PostsController {
     private final ComplaintRepository complaintRepository;
     private final BlockRepository blockRepository;
     private final CommentRepository commentRepository;
+    private final PushNotificationService pushNotificationService;
 
     public PostsController(
             JwtTokenUtil jwtTokenUtil, PostRepository postRepository, UserRepository userRepository,
             LikeRepository likeRepository, ComplaintRepository complaintRepository, BlockRepository blockRepository,
-            CommentRepository commentRepository, NotificationRepository notificationRepository
-    ) {
+            CommentRepository commentRepository, NotificationRepository notificationRepository,
+            PushNotificationService pushNotificationService,
+            UserService userService) {
         this.jwtTokenUtil = jwtTokenUtil;
         this.postRepository = postRepository;
         this.userRepository = userRepository;
@@ -88,6 +98,8 @@ public class PostsController {
         this.blockRepository = blockRepository;
         this.commentRepository = commentRepository;
         this.notificationRepository = notificationRepository;
+        this.pushNotificationService = pushNotificationService;
+        this.userService = userService;
     }
 
     @PostMapping
@@ -340,6 +352,20 @@ public class PostsController {
                         notification.setTimestamp(ZonedDateTime.now());
                         notification.setOwner(user);
                         notificationRepository.save(notification);
+                        if (pushEnabled) {
+                            Optional<String> deviceToken = userService.getTokenByUserId(ownerId);
+                            if (deviceToken.isPresent()) {
+                                try {
+                                    pushNotificationService.sendPush(
+                                            deviceToken.get(),
+                                            "New Comment",
+                                            "" + user.getUsername() + ""
+                                    );
+                                } catch (JsonProcessingException e) {
+                                    throw new RuntimeException(e);
+                                }
+                            }
+                        }
                     });
                     Notification notification = new Notification();
                     notification.setTargetId(post.getId());

@@ -50,8 +50,8 @@ public class VideoController {
 
     @GetMapping({"/{vidName}.{ext}", "/th/{vidName}.{ext}"})
     public ResponseEntity<Resource> serveVideoOrThumb(
-            @PathVariable("vidName") String vidName,
-            @PathVariable("ext") String ext,
+            @PathVariable String vidName,
+            @PathVariable String ext,
             @RequestHeader(value = "Range", required = false) String rangeHeader,
             HttpServletRequest request) {
         try {
