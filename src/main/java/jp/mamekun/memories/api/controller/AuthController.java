@@ -13,6 +13,7 @@ import jp.mamekun.memories.api.repository.PasswordResetTokenRepository;
 import jp.mamekun.memories.api.repository.UserRepository;
 import jp.mamekun.memories.api.service.EmailService;
 import jp.mamekun.memories.api.util.JwtTokenUtil;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -34,6 +35,7 @@ import java.util.HexFormat;
 import java.util.Optional;
 import java.util.UUID;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {
@@ -112,7 +114,6 @@ public class AuthController {
     }
 
     // Password reset request
-    // Password reset request
     @PostMapping({"/forgot-password"})
     @Transactional
     public ResponseEntity<String> passwordResetRequest(
@@ -158,8 +159,8 @@ public class AuthController {
         // If email sending fails, we still return OK to the caller.
         try {
             emailService.sendTextMail(mailFrom, user.getEmail(), subject, body);
-        } catch (Exception ignored) {
-            // Intentionally ignored: avoid leaking delivery status.
+        } catch (Exception ex) {
+            log.error("Failed to send password reset email", ex);
         }
 
         return ResponseEntity.ok("OK");
