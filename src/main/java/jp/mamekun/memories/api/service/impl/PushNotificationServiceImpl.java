@@ -7,6 +7,7 @@ import com.eatthepath.pushy.apns.util.SimpleApnsPushNotification;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jp.mamekun.memories.api.service.PushMessage;
 import jp.mamekun.memories.api.service.PushNotificationService;
 import jp.mamekun.memories.api.service.UserService;
 import org.springframework.beans.factory.annotation.Value;
@@ -14,6 +15,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -27,6 +29,7 @@ public class PushNotificationServiceImpl implements PushNotificationService {
 
     private final ApnsClient apnsClient;
     private final UserService userService;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Value("${apns.bundle-id}")
     private String bundleId;
@@ -42,20 +45,16 @@ public class PushNotificationServiceImpl implements PushNotificationService {
             String title,
             String body
     ) throws JsonProcessingException {
+        return sendPush(deviceToken, PushMessage.alert(title, body, null, null, null));
+    }
 
-        ObjectMapper mapper = new ObjectMapper();
+    @Override
+    public CompletableFuture<String> sendPush(
+            String deviceToken,
+            PushMessage message
+    ) throws JsonProcessingException {
 
-        Map<String, Object> payloadMap = Map.of(
-                "aps", Map.of(
-                        "alert", Map.of(
-                                "title", title,
-                                "body", body
-                        ),
-                        "sound", "default"
-                )
-        );
-
-        String payload = mapper.writeValueAsString(payloadMap);
+        String payload = objectMapper.writeValueAsString(buildPayload(message));
 
         SimpleApnsPushNotification pushNotification =
                 new SimpleApnsPushNotification(
@@ -63,8 +62,8 @@ public class PushNotificationServiceImpl implements PushNotificationService {
                         bundleId,
                         payload,
                         Instant.now().plusSeconds(3600),
-                        DeliveryPriority.IMMEDIATE,
-                        PushType.ALERT,
+                        message.background() ? DeliveryPriority.CONSERVE_POWER : DeliveryPriority.IMMEDIATE,
+                        message.background() ? PushType.BACKGROUND : PushType.ALERT,
                         null,
                         null
                 );
@@ -88,6 +87,46 @@ public class PushNotificationServiceImpl implements PushNotificationService {
 
                 })
                 .exceptionally(ex -> "Push failed: " + ex.getMessage());
+    }
+
+    @Override
+    public CompletableFuture<String> sendBackgroundPush(String deviceToken) throws JsonProcessingException {
+        return sendPush(deviceToken, PushMessage.silent());
+    }
+
+    /**
+     * Builds the APNs JSON payload. Alert pushes get {@code aps.alert}, a sound and
+     * {@code mutable-content} so a notification service extension can modify them, plus
+     * top-level routing fields the app reads when the notification is tapped.
+     * Background pushes only set {@code aps.content-available}.
+     */
+    private Map<String, Object> buildPayload(PushMessage message) {
+        Map<String, Object> aps = new LinkedHashMap<>();
+        if (message.background()) {
+            aps.put("content-available", 1);
+        } else {
+            aps.put("alert", Map.of(
+                    "title", message.title(),
+                    "body", message.body()
+            ));
+            aps.put("sound", "default");
+            aps.put("mutable-content", 1);
+        }
+
+        Map<String, Object> payloadMap = new LinkedHashMap<>();
+        payloadMap.put("aps", aps);
+        if (!message.background()) {
+            if (message.type() != null) {
+                payloadMap.put("type", message.type());
+            }
+            if (message.targetId() != null) {
+                payloadMap.put("targetId", message.targetId());
+            }
+            if (message.actorId() != null) {
+                payloadMap.put("actorId", message.actorId());
+            }
+        }
+        return payloadMap;
     }
 
     public CompletableFuture<Void> sendBroadcast(List<String> tokens, String title, String body) {

@@ -17,4 +17,14 @@ public class NoOpPushNotificationService implements PushNotificationService {
     public CompletableFuture<String> sendPush(String token, String title, String body) {
         return CompletableFuture.completedFuture("Push disabled");
     }
+
+    @Override
+    public CompletableFuture<String> sendPush(String token, PushMessage message) {
+        return CompletableFuture.completedFuture("Push disabled");
+    }
+
+    @Override
+    public CompletableFuture<String> sendBackgroundPush(String token) {
+        return CompletableFuture.completedFuture("Push disabled");
+    }
 }

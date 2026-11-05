@@ -37,7 +37,8 @@ public class Message {
     @JoinColumn(name = "receiver_uid")
     private User receiver;
 
-    @Column(length = 2048)
+    // Encrypted (secured) messages are base64 ciphertext, which is longer than the plaintext.
+    @Column(length = 8192)
     private String content;
 
     private Boolean read;

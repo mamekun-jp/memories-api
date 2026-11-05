@@ -1,10 +1,14 @@
 package jp.mamekun.memories.api.controller;
 
+import jakarta.validation.Valid;
 import jp.mamekun.memories.api.model.User;
 import jp.mamekun.memories.api.model.UserKey;
+import jp.mamekun.memories.api.model.api.E2eStatusResponse;
+import jp.mamekun.memories.api.model.api.PublicKeyRequest;
 import jp.mamekun.memories.api.repository.UserKeyRepository;
 import jp.mamekun.memories.api.repository.UserRepository;
 import jp.mamekun.memories.api.util.JwtTokenUtil;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -26,6 +30,9 @@ public class KeyController {
     private final UserRepository userRepository;
     private final UserKeyRepository userKeyRepository;
 
+    @Value("${app.e2e-enabled:true}")
+    private boolean e2eEnabled;
+
     public KeyController(
             JwtTokenUtil jwtTokenUtil, UserRepository userRepository, UserKeyRepository userKeyRepository
     ) {
@@ -34,21 +41,41 @@ public class KeyController {
         this.userKeyRepository = userKeyRepository;
     }
 
-    @PostMapping
-    public ResponseEntity<Void> uploadPublicKey(
-            @RequestHeader("Authorization") String authorizationHeader, @RequestBody String publicKey
+    /** Lets clients check whether the server currently supports E2E messages (APP_E2E_ENABLED). */
+    @GetMapping("/status")
+    public ResponseEntity<E2eStatusResponse> getE2eStatus(
+            @RequestHeader("Authorization") String authorizationHeader
     ) {
         User user = jwtTokenUtil.getUserFromToken(userRepository, authorizationHeader);
         if (user == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
+        return ResponseEntity.ok(new E2eStatusResponse(e2eEnabled));
+    }
 
+    @PostMapping
+    public ResponseEntity<Void> uploadPublicKey(
+            @RequestHeader("Authorization") String authorizationHeader,
+            @RequestBody @Valid PublicKeyRequest request
+    ) {
+        User user = jwtTokenUtil.getUserFromToken(userRepository, authorizationHeader);
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        if (!e2eEnabled) {
+            // Clients treat 410 as "encryption disabled on this server" and fall back to plaintext.
+            return ResponseEntity.status(HttpStatus.GONE).build();
+        }
+
+        // Upsert: a re-upload replaces the stored key (key rotation) instead of being rejected.
         Optional<UserKey> userKeyOpt = userKeyRepository.findByUser(user);
-        if (userKeyOpt.isEmpty()) {
-            UserKey userKey = new UserKey(user, publicKey, ZonedDateTime.now());
+        if (userKeyOpt.isPresent()) {
+            UserKey userKey = userKeyOpt.get();
+            userKey.setContent(request.getPublicKey());
+            userKey.setUpdatedAt(ZonedDateTime.now());
             userKeyRepository.save(userKey);
         } else {
-            return ResponseEntity.status(HttpStatus.ALREADY_REPORTED).build();
+            userKeyRepository.save(new UserKey(user, request.getPublicKey(), ZonedDateTime.now()));
         }
 
         return ResponseEntity.ok().build();

@@ -15,6 +15,7 @@ import jp.mamekun.memories.api.repository.UserRepository;
 import jp.mamekun.memories.api.service.NotificationService;
 import jp.mamekun.memories.api.util.JwtTokenUtil;
 import jp.mamekun.memories.api.util.TimeFormat;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -42,6 +43,9 @@ public class MessageController {
     private final MessageRepository messageRepository;
     private final BlockRepository blockRepository;
     private final NotificationService notificationService;
+
+    @Value("${app.e2e-enabled:true}")
+    private boolean e2eEnabled;
 
     public MessageController(
             JwtTokenUtil jwtTokenUtil, UserRepository userRepository, MessageRepository messageRepository,
@@ -76,6 +80,11 @@ public class MessageController {
         }
 
         boolean secured = Boolean.TRUE.equals(messageRequest.getSecured());
+        if (secured && !e2eEnabled) {
+            // E2E is switched off on this server (APP_E2E_ENABLED=false): refuse the
+            // encrypted payload so the client falls back to sending plaintext.
+            return ResponseEntity.badRequest().body(null);
+        }
         Message message = messageRepository.save(new Message(
                 user, receiver, messageRequest.getContent(), false, secured, ZonedDateTime.now()
         ));

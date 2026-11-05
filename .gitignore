@@ -37,7 +37,15 @@ out/
 .vscode/
 
 ### Docker Compose ###
-docker-compose.yml
+# Keep docker-compose.yml in the repo; only local env files and overrides stay untracked
+.env
+.env.*
+!.env.sample
+docker-compose.override.yml
+
+### Local secrets ###
+# docs/TOKENS.md holds real tokens locally (see docs/TOKENS.sample.md); never commit it
+docs/TOKENS.md
 
 # Compiled class file
 *.class

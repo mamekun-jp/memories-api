@@ -7,7 +7,43 @@ Check the app at Apple Store: https://apps.apple.com/us/app/mymemoriesapp/id6740
 
 [MyMemoriesApp](https://apps.apple.com/us/app/mymemoriesapp/id6740176333) source code will become available soon!
 
+## Documentation
+
+- [AGENTS.md](AGENTS.md) — working guide for agents/humans: build, test, config, secrets policy, layout.
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — codebase map and request flows (auth, posts, messages, push, keys).
+- [docs/PUSH_NOTIFICATIONS.md](docs/PUSH_NOTIFICATIONS.md) — APNs setup, push payload structure, deep links, troubleshooting.
+- [docs/E2E_MESSAGING.md](docs/E2E_MESSAGING.md) — end-to-end encrypted messages and the `APP_E2E_ENABLED` kill switch.
+- [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) — Docker/compose, CI pipeline, release checklist, rollback.
+- [docs/TOKENS.sample.md](docs/TOKENS.sample.md) — template for saving tokens locally: `cp docs/TOKENS.sample.md docs/TOKENS.md` (`docs/TOKENS.md` is gitignored — never commit real tokens).
+
+## Build from source
+
+Gradle 8.11.1 requires JDK 21 to run (it fails on newer JDKs) — CI pins Temurin 21 automatically:
+
+```bash
+./gradlew build        # compile + tests
+./gradlew bootJar      # build/libs/memories-api-0.2.1-SNAPSHOT.jar
+docker build .         # image (expects the jar from the previous step)
+```
+
 You may create your own server within a few steps by using Docker!
+
+## Quick start with Docker Compose
+
+The repository ships a `docker-compose.yml` and a sample env file. Copy the sample,
+adjust the values (database, JWT secret, mail, APNs push keys, ...), then start:
+
+```bash
+cp .env.sample .env   # edit .env with your own values
+docker compose up -d
+```
+
+All settings from `.env` are passed to the container as environment variables
+(see `.env.sample` for the full list, including the `APNS_*` params used for native
+push notifications). Data is kept in the `memories-img`, `memories-vid` and
+`memories-db` volumes.
+
+## Plain docker run
 
 ```bash
 docker run -d \
@@ -29,7 +65,7 @@ You may change the path on the left for your local path
 /data/memories-db is the place where H2 database file will be stored.
 You may change the path on the left for your local path
 
-For more options please check out the sample docker-compose.yml file:
+For more options please check out `docker-compose.yml` and `.env.sample` in this repository (all values below can also be set via `.env`):
 
 ```yaml
 services:
@@ -81,3 +117,9 @@ memories-app://addServer?name={SERVER_NAME}&address=https://{YOUR_SERVER_ADDRESS
 ```
 
 This will automatically configure the app to use the given server for the backend.
+
+## Secrets
+
+Never commit real tokens. Local values go in `.env` (gitignored) or `docs/TOKENS.md`
+(copy `docs/TOKENS.sample.md`, gitignored). CI secrets live in GitHub Actions secrets
+(`DOCKER_HUB_USERNAME` / `DOCKER_HUB_PASSWORD`). See `docs/TOKENS.sample.md` for the full registry.

@@ -41,7 +41,8 @@ public class NotificationService {
             return;
         }
         save(actor, receiverId, targetId, type, false);
-        userRepository.findById(receiverId).ifPresent(receiver -> push(receiver.getDeviceToken(), pushTitle, pushBody));
+        userRepository.findById(receiverId)
+                .ifPresent(receiver -> push(receiver.getDeviceToken(), actor, targetId, type, pushTitle, pushBody));
     }
 
     /** Notify everyone on the server (used for new posts and stories). */
@@ -54,7 +55,7 @@ public class NotificationService {
                 .filter(u -> !u.getId().equals(actor.getId()))
                 .map(User::getDeviceToken)
                 .filter(Objects::nonNull)
-                .forEach(token -> push(token, pushTitle, pushBody));
+                .forEach(token -> push(token, actor, targetId, type, pushTitle, pushBody));
     }
 
     private void save(User actor, UUID receiverId, UUID targetId, NotificationTypeEnum type, boolean isPublic) {
@@ -68,12 +69,18 @@ public class NotificationService {
         notificationRepository.save(notification);
     }
 
-    private void push(String deviceToken, String title, String body) {
+    private void push(String deviceToken, User actor, UUID targetId, NotificationTypeEnum type,
+                      String title, String body) {
         if (!pushEnabled || deviceToken == null || deviceToken.isBlank()) {
             return;
         }
         try {
-            pushNotificationService.sendPush(deviceToken, title, body)
+            PushMessage message = PushMessage.alert(
+                    title, body, type.name(),
+                    targetId != null ? targetId.toString() : null,
+                    actor.getId().toString()
+            );
+            pushNotificationService.sendPush(deviceToken, message)
                     .thenAccept(result -> log.debug("Push result: {}", result));
         } catch (Exception e) {
             log.error("Failed to send push notification", e);

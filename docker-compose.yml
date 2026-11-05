@@ -1,0 +1,26 @@
+# Docker Compose setup for memories-api.
+#
+#   cp .env.sample .env   # then edit .env with your values
+#   docker compose up -d
+#
+# By default the published image is used; uncomment "build: ." to build from source.
+
+services:
+  memories-api:
+    image: mamekunjp/memories-api:latest
+    # build: .
+    container_name: memories-api
+    restart: unless-stopped
+    ports:
+      - "${SERVER_PORT:-9090}:9090"
+    env_file:
+      - .env
+    volumes:
+      - memories-img:/data/memories-img
+      - memories-vid:/data/memories-vid
+      - memories-db:/data/memories-db
+
+volumes:
+  memories-img:
+  memories-vid:
+  memories-db:
