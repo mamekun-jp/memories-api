@@ -7,6 +7,8 @@ import jp.mamekun.memories.api.model.api.NotificationResponse;
 import jp.mamekun.memories.api.repository.NotificationRepository;
 import jp.mamekun.memories.api.repository.UserRepository;
 import jp.mamekun.memories.api.util.JwtTokenUtil;
+import jp.mamekun.memories.api.util.TimeFormat;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -23,6 +25,8 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/notification")
 public class NotificationController {
+    private static final int MAX_RESULTS = 100;
+
     private final JwtTokenUtil jwtTokenUtil;
     private final NotificationRepository notificationRepository;
     private final UserRepository userRepository;
@@ -83,12 +87,12 @@ public class NotificationController {
         ZonedDateTime sinceDateTime = Instant.ofEpochSecond(since)
                 .atZone(ZoneId.systemDefault());
 
-        List<NotificationResponse> response = notificationRepository.findAllForUser(sinceDateTime, user.getId())
+        List<NotificationResponse> response = notificationRepository.findAllForUser(sinceDateTime, user.getId(), PageRequest.of(0, MAX_RESULTS))
                 .stream().map(notification -> new NotificationResponse(
                         notification.getId().toString(),
                         notification.getTargetId().toString(),
                         notification.getOwner().getId().toString(), notification.getContent(),
-                        notification.getTimestamp().toString(), notification.getOwner().getProfileImageUrl(),
+                        TimeFormat.iso(notification.getTimestamp()), notification.getOwner().getProfileImageUrl(),
                         notification.getOwner().getUsername())
                 ).toList();
         return ResponseEntity.ok(response);

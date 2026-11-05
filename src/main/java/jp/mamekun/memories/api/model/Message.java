@@ -50,6 +50,7 @@ public class Message {
         this.receiver = receiver;
         this.content = content;
         this.read = read;
+        this.secured = secured;
         this.sentAt = sentAt;
     }
 }

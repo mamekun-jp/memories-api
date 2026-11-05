@@ -10,4 +10,10 @@ public interface BlockRepository extends JpaRepository<Block, UUID> {
     List<Block> findAllByUserId(UUID userId);
 
     boolean existsByUserIdAndBlockedUserId(UUID userId, UUID blockedUserId);
+
+    void deleteAllByUserIdAndBlockedUserId(UUID userId, UUID blockedUserId);
+
+    void deleteAllByUserId(UUID userId);
+
+    void deleteAllByBlockedUserId(UUID blockedUserId);
 }

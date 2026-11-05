@@ -23,6 +23,10 @@ public interface FollowRepository extends JpaRepository<Follow, UUID> {
 
     void deleteAllByFollowerIdAndFolloweeId(UUID followerId, UUID followeeId);
 
+    void deleteAllByFollowerId(UUID followerId);
+
+    void deleteAllByFolloweeId(UUID followeeId);
+
     Integer countByFolloweeId(UUID followeeId);
 
     Integer countByFollowerId(UUID followerId);

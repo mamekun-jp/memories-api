@@ -11,6 +11,9 @@ import jp.mamekun.memories.api.repository.BlockRepository;
 import jp.mamekun.memories.api.repository.FollowRepository;
 import jp.mamekun.memories.api.repository.PostRepository;
 import jp.mamekun.memories.api.repository.UserRepository;
+import jp.mamekun.memories.api.model.enums.NotificationTypeEnum;
+import jp.mamekun.memories.api.service.AccountService;
+import jp.mamekun.memories.api.service.NotificationService;
 import jp.mamekun.memories.api.util.JwtTokenUtil;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -37,16 +40,21 @@ public class UserController {
     private final FollowRepository followRepository;
     private final BlockRepository blockRepository;
     private final PostRepository postRepository;
+    private final AccountService accountService;
+    private final NotificationService notificationService;
 
     public UserController(
             JwtTokenUtil jwtTokenUtil, UserRepository userRepository, FollowRepository followRepository,
-            BlockRepository blockRepository, PostRepository postRepository
+            BlockRepository blockRepository, PostRepository postRepository, AccountService accountService,
+            NotificationService notificationService
     ) {
         this.jwtTokenUtil = jwtTokenUtil;
         this.userRepository = userRepository;
         this.followRepository = followRepository;
         this.blockRepository = blockRepository;
         this.postRepository = postRepository;
+        this.accountService = accountService;
+        this.notificationService = notificationService;
     }
 
     @GetMapping
@@ -73,7 +81,7 @@ public class UserController {
         UserResponse response = new UserResponse(user.getId().toString(), user.getUsername(),
                 user.getProfileImageUrl(), user.getFullName(), user.getBio(), user.getEmail(), false,
                 followRepository.countByFolloweeId(user.getId()), followRepository.countByFollowerId(user.getId()),
-                postRepository.countByOwner_Id(user.getId()));
+                postRepository.countRegularPostsByOwner(user.getId()));
         return ResponseEntity.ok().body(response);
     }
 
@@ -113,7 +121,7 @@ public class UserController {
         UserResponse response = new UserResponse(user.getId().toString(), user.getUsername(),
                 user.getProfileImageUrl(), user.getFullName(), user.getBio(), user.getEmail(), false,
                 followRepository.countByFolloweeId(user.getId()), followRepository.countByFollowerId(user.getId()),
-                postRepository.countByOwner_Id(user.getId()));
+                postRepository.countRegularPostsByOwner(user.getId()));
 
         return ResponseEntity.ok().body(response);
     }
@@ -126,8 +134,7 @@ public class UserController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
 
-        postRepository.deleteByOwner(user);
-        userRepository.delete(user);
+        accountService.deleteAccount(user);
 
         return ResponseEntity.ok("OK");
     }
@@ -173,16 +180,14 @@ public class UserController {
                 user.getProfileImageUrl(), user.getFullName(), user.getBio(), user.getEmail(),
                 followRepository.existsByFollowerIdAndFolloweeId(currentUser.getId(), user.getId()),
                 followRepository.countByFolloweeId(user.getId()), followRepository.countByFollowerId(user.getId()),
-                postRepository.countByOwner_Id(user.getId()));
+                postRepository.countRegularPostsByOwner(user.getId()));
         return ResponseEntity.ok().body(response);
     }
 
     @GetMapping("/followers/{userId}")
     public ResponseEntity<List<UserResponse>> getFollowers(@PathVariable String userId) {
         List<UserResponse> response = followRepository.findFollowersByFolloweeId(UUID.fromString(userId))
-                .stream().map(user ->
-                new UserResponse(user.getId().toString(), user.getUsername(), user.getProfileImageUrl(),
-                        user.getFullName(), user.getBio(), "", false, 0, 0, 0)).toList();
+                .stream().map(UserResponse::summary).toList();
 
         return ResponseEntity.ok(response);
     }
@@ -190,9 +195,7 @@ public class UserController {
     @GetMapping("/following/{userId}")
     public ResponseEntity<List<UserResponse>> getFollowing(@PathVariable String userId) {
         List<UserResponse> response = followRepository.findAllByFollowerId(UUID.fromString(userId))
-                .stream().map(user ->
-                new UserResponse(user.getId().toString(), user.getUsername(), user.getProfileImageUrl(),
-                        user.getFullName(), user.getBio(), "", false, 0, 0, 0)).toList();
+                .stream().map(UserResponse::summary).toList();
 
         return ResponseEntity.ok(response);
     }
@@ -221,6 +224,8 @@ public class UserController {
         if (!followRepository.existsByFollowerIdAndFolloweeId(followerId, followeeId)) {
             Follow follow = new Follow(followerId, followeeId, ZonedDateTime.now());
             followId = followRepository.save(follow).getId();
+            notificationService.notifyUser(currentUser, followeeId, followerId, NotificationTypeEnum.NEW_FOLLOWER,
+                    "New follower", currentUser.getUsername() + " started following you");
         } else {
             return ResponseEntity.ok("OK");
         }
@@ -271,5 +276,31 @@ public class UserController {
         }
 
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+    }
+
+    @GetMapping("/blocked")
+    public ResponseEntity<List<UserResponse>> getBlockedUsers(@RequestHeader("Authorization") String authorizationHeader) {
+        User user = jwtTokenUtil.getUserFromToken(userRepository, authorizationHeader);
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        List<UUID> blockedIds = blockRepository.findAllByUserId(user.getId()).stream()
+                .map(Block::getBlockedUserId).toList();
+        return ResponseEntity.ok(userRepository.findAllById(blockedIds).stream().map(UserResponse::summary).toList());
+    }
+
+    @DeleteMapping("/block/{userId}")
+    @Transactional
+    public ResponseEntity<String> unblockUser(
+            @PathVariable String userId, @RequestHeader("Authorization") String authorizationHeader
+    ) {
+        User user = jwtTokenUtil.getUserFromToken(userRepository, authorizationHeader);
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        blockRepository.deleteAllByUserIdAndBlockedUserId(user.getId(), UUID.fromString(userId));
+        return ResponseEntity.ok("OK");
     }
 }

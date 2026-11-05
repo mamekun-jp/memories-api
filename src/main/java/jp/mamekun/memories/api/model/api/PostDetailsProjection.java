@@ -11,5 +11,6 @@ public interface PostDetailsProjection {
     String getProfileImageUrl();
     int getLikeCount();
     int getCommentCount();
+    Boolean getLiked();
+    Boolean getSaved();
 }
-

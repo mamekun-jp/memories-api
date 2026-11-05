@@ -11,4 +11,6 @@ public interface UserKeyRepository extends JpaRepository<UserKey, UUID> {
     Optional<UserKey> findByUser_Id(UUID userId);
 
     Optional<UserKey> findByUser(User user);
+
+    void deleteAllByUser(User user);
 }

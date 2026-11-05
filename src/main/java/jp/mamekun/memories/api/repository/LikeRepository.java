@@ -2,7 +2,6 @@ package jp.mamekun.memories.api.repository;
 
 import jp.mamekun.memories.api.model.Like;
 import jp.mamekun.memories.api.model.User;
-import jp.mamekun.memories.api.model.api.UserResponse;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
@@ -15,4 +14,8 @@ public interface LikeRepository extends JpaRepository<Like, UUID> {
     Optional<Like> findByPostIdAndUser(UUID postId, User user);
 
     List<Like> findByPostId(UUID postId);
+
+    void deleteAllByUser(User user);
+
+    void deleteAllByPostId(UUID postId);
 }

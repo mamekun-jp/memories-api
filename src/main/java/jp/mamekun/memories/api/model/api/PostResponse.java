@@ -18,4 +18,14 @@ public class PostResponse {
     private String timestamp;
     private String profileImageUrl;
     private String username;
+    private Boolean isLiked;
+    private Boolean isSaved;
+
+    public static PostResponse from(PostDetailsProjection p) {
+        return new PostResponse(
+                p.getPostId(), p.getOwnerId(), p.getCaption(), p.getLikeCount(), p.getCommentCount(),
+                p.getImageUrl(), p.getPostType(), p.getTimestamp(), p.getProfileImageUrl(), p.getUsername(),
+                Boolean.TRUE.equals(p.getLiked()), Boolean.TRUE.equals(p.getSaved())
+        );
+    }
 }
