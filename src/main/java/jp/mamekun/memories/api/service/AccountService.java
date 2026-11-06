@@ -4,6 +4,7 @@ import jakarta.transaction.Transactional;
 import jp.mamekun.memories.api.model.Post;
 import jp.mamekun.memories.api.model.User;
 import jp.mamekun.memories.api.repository.BlockRepository;
+import jp.mamekun.memories.api.repository.CommentLikeRepository;
 import jp.mamekun.memories.api.repository.CommentRepository;
 import jp.mamekun.memories.api.repository.ComplaintRepository;
 import jp.mamekun.memories.api.repository.FollowRepository;
@@ -29,6 +30,7 @@ public class AccountService {
     private final PostRepository postRepository;
     private final LikeRepository likeRepository;
     private final CommentRepository commentRepository;
+    private final CommentLikeRepository commentLikeRepository;
     private final SavedPostRepository savedPostRepository;
     private final StoryViewRepository storyViewRepository;
     private final FollowRepository followRepository;
@@ -43,6 +45,7 @@ public class AccountService {
     @Transactional
     public void deletePost(Post post) {
         likeRepository.deleteAllByPostId(post.getId());
+        commentLikeRepository.deleteAllByPostId(post.getId());
         commentRepository.deleteAllByPostId(post.getId());
         savedPostRepository.deleteAllByPostId(post.getId());
         storyViewRepository.deleteAllByPostId(post.getId());
@@ -57,6 +60,8 @@ public class AccountService {
         posts.forEach(this::deletePost);
 
         likeRepository.deleteAllByUser(user);
+        commentLikeRepository.deleteAllByUser(user);
+        commentLikeRepository.deleteAllOnCommentsBy(user);
         commentRepository.deleteAllByOwner(user);
         savedPostRepository.deleteAllByUserId(user.getId());
         storyViewRepository.deleteAllByViewer(user);

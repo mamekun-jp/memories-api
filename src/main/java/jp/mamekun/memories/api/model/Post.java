@@ -33,6 +33,8 @@ public class Post {
     private String imageUrl;
     private ZonedDateTime timestamp;
     private PostTypeEnum postType;
+    /** Stories the owner pinned to their profile; they stay visible there after expiring. */
+    private Boolean highlighted;
 
     @EqualsAndHashCode.Include
     @ManyToOne(fetch = FetchType.EAGER)

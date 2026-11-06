@@ -15,4 +15,6 @@ public class CommentResponse {
     private String timestamp;
     private String profileImageUrl;
     private String username;
+    private Integer likes;
+    private Boolean isLiked;
 }

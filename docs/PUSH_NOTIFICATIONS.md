@@ -55,7 +55,7 @@ pushed on the feed navigation stack:
 
 | `type` | route |
 |---|---|
-| `NEW_POST`, `NEW_COMMENT`, `NEW_LIKE` | single post view (`targetId`) |
+| `NEW_POST`, `NEW_COMMENT`, `NEW_LIKE`, `NEW_COMMENT_LIKE` | single post view (`targetId`) |
 | `NEW_STORY` | story viewer (`targetId`) |
 | `NEW_MESSAGE` | messages inbox |
 | `NEW_FOLLOWER` | actor's profile (`actorId`) |

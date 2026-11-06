@@ -3,6 +3,7 @@ package jp.mamekun.memories.api.controller;
 import jakarta.transaction.Transactional;
 import jakarta.validation.Valid;
 import jp.mamekun.memories.api.model.Comment;
+import jp.mamekun.memories.api.model.CommentLike;
 import jp.mamekun.memories.api.model.Complaint;
 import jp.mamekun.memories.api.model.Like;
 import jp.mamekun.memories.api.model.Post;
@@ -17,6 +18,7 @@ import jp.mamekun.memories.api.model.api.PostUpdateRequest;
 import jp.mamekun.memories.api.model.api.UserResponse;
 import jp.mamekun.memories.api.model.enums.NotificationTypeEnum;
 import jp.mamekun.memories.api.model.enums.PostTypeEnum;
+import jp.mamekun.memories.api.repository.CommentLikeRepository;
 import jp.mamekun.memories.api.repository.CommentRepository;
 import jp.mamekun.memories.api.repository.ComplaintRepository;
 import jp.mamekun.memories.api.repository.LikeRepository;
@@ -45,7 +47,10 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.time.ZonedDateTime;
 import java.util.LinkedHashSet;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -69,6 +74,7 @@ public class PostsController {
     private final LikeRepository likeRepository;
     private final ComplaintRepository complaintRepository;
     private final CommentRepository commentRepository;
+    private final CommentLikeRepository commentLikeRepository;
     private final SavedPostRepository savedPostRepository;
     private final StoryViewRepository storyViewRepository;
     private final NotificationService notificationService;
@@ -77,15 +83,16 @@ public class PostsController {
     public PostsController(
             JwtTokenUtil jwtTokenUtil, PostRepository postRepository, UserRepository userRepository,
             LikeRepository likeRepository, ComplaintRepository complaintRepository,
-            CommentRepository commentRepository, SavedPostRepository savedPostRepository,
-            StoryViewRepository storyViewRepository, NotificationService notificationService,
-            AccountService accountService) {
+            CommentRepository commentRepository, CommentLikeRepository commentLikeRepository,
+            SavedPostRepository savedPostRepository, StoryViewRepository storyViewRepository,
+            NotificationService notificationService, AccountService accountService) {
         this.jwtTokenUtil = jwtTokenUtil;
         this.postRepository = postRepository;
         this.userRepository = userRepository;
         this.likeRepository = likeRepository;
         this.complaintRepository = complaintRepository;
         this.commentRepository = commentRepository;
+        this.commentLikeRepository = commentLikeRepository;
         this.savedPostRepository = savedPostRepository;
         this.storyViewRepository = storyViewRepository;
         this.notificationService = notificationService;
@@ -143,7 +150,7 @@ public class PostsController {
                 savedPost.getId().toString(), user.getId().toString(), savedPost.getCaption(),
                 0, 0, savedPost.getImageUrl(), savedPost.getPostType().toString(),
                 TimeFormat.iso(savedPost.getTimestamp()), user.getProfileImageUrl(), user.getUsername(),
-                false, false
+                false, false, false
         ));
     }
 
@@ -350,6 +357,67 @@ public class PostsController {
                 .stream().map(view -> UserResponse.summary(view.getViewer())).toList());
     }
 
+    /** The caller's own stories, expired ones included, so they can pick highlights. */
+    @GetMapping("/stories/archive")
+    public ResponseEntity<List<PostResponse>> getStoryArchive(@RequestHeader("Authorization") String authorizationHeader) {
+        User user = currentUser(authorizationHeader);
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        return ResponseEntity.ok(postRepository.findStoryArchive(user.getId())
+                .stream().map(PostResponse::from).toList());
+    }
+
+    /** Stories a user pinned to their profile. */
+    @GetMapping("/user/{userId}/highlights")
+    public ResponseEntity<List<PostResponse>> getHighlights(
+            @PathVariable String userId, @RequestHeader("Authorization") String authorizationHeader
+    ) {
+        User user = currentUser(authorizationHeader);
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        return ResponseEntity.ok(postRepository.findHighlights(user.getId(), UUID.fromString(userId))
+                .stream().map(PostResponse::from).toList());
+    }
+
+    @PostMapping("/{postId}/highlight")
+    @Transactional
+    public ResponseEntity<String> addHighlight(
+            @PathVariable String postId, @RequestHeader("Authorization") String authorizationHeader
+    ) {
+        return setHighlighted(postId, true, authorizationHeader);
+    }
+
+    @DeleteMapping("/{postId}/highlight")
+    @Transactional
+    public ResponseEntity<String> removeHighlight(
+            @PathVariable String postId, @RequestHeader("Authorization") String authorizationHeader
+    ) {
+        return setHighlighted(postId, false, authorizationHeader);
+    }
+
+    private ResponseEntity<String> setHighlighted(String postId, boolean highlighted, String authorizationHeader) {
+        User user = currentUser(authorizationHeader);
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        Optional<Post> postOpt = postRepository.findPostByIdAndIsDeleted(UUID.fromString(postId), false);
+        if (postOpt.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+        Post post = postOpt.get();
+        if (!post.getOwner().getId().equals(user.getId())) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+        if (post.getPostType() != PostTypeEnum.STORY_IMAGE && post.getPostType() != PostTypeEnum.STORY_VIDEO) {
+            return ResponseEntity.badRequest().build();
+        }
+        post.setHighlighted(highlighted);
+        postRepository.save(post);
+        return ResponseEntity.ok("OK");
+    }
+
     @GetMapping("/report/{postId}")
     @Transactional
     public ResponseEntity<String> reportPost(
@@ -388,10 +456,28 @@ public class PostsController {
 
     @GetMapping("/comments/{postId}")
     @Transactional
-    public ResponseEntity<List<CommentResponse>> getComments(@PathVariable String postId) {
-        List<CommentResponse> response = commentRepository.findByPostIdOrderByTimestampAsc(UUID.fromString(postId))
-                .stream().map(PostsController::toCommentResponse).toList();
-        return ResponseEntity.ok(response);
+    public ResponseEntity<List<CommentResponse>> getComments(
+            @PathVariable String postId,
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader
+    ) {
+        List<Comment> comments = commentRepository.findByPostIdOrderByTimestampAsc(UUID.fromString(postId));
+        if (comments.isEmpty()) {
+            return ResponseEntity.ok(List.of());
+        }
+        List<UUID> commentIds = comments.stream().map(Comment::getId).toList();
+
+        Map<UUID, Integer> likeCounts = new HashMap<>();
+        commentLikeRepository.countByCommentIds(commentIds)
+                .forEach(row -> likeCounts.put((UUID) row[0], ((Number) row[1]).intValue()));
+
+        User viewer = authorizationHeader != null ? currentUser(authorizationHeader) : null;
+        Set<UUID> likedByViewer = viewer != null
+                ? new HashSet<>(commentLikeRepository.findLikedCommentIds(commentIds, viewer.getId()))
+                : Set.of();
+
+        return ResponseEntity.ok(comments.stream()
+                .map(c -> toCommentResponse(c, likeCounts.getOrDefault(c.getId(), 0), likedByViewer.contains(c.getId())))
+                .toList());
     }
 
     @PostMapping("/comments/{postId}")
@@ -427,7 +513,7 @@ public class PostsController {
                 user, receiverId, post.getId(), NotificationTypeEnum.NEW_COMMENT,
                 "New comment", user.getUsername() + ": " + commentRequest.getContent()));
 
-        return ResponseEntity.ok(toCommentResponse(saved));
+        return ResponseEntity.ok(toCommentResponse(saved, 0, false));
     }
 
     @DeleteMapping("/comments/{postId}/{commentId}")
@@ -448,10 +534,48 @@ public class PostsController {
                     .map(post -> post.getOwner().getId().equals(user.getId()))
                     .orElse(false);
             if (isAuthor || isPostOwner) {
+                commentLikeRepository.deleteAllByCommentId(comment.getId());
                 commentRepository.delete(comment);
             }
         });
 
+        return ResponseEntity.ok("OK");
+    }
+
+    @PostMapping("/comments/{commentId}/like")
+    @Transactional
+    public ResponseEntity<String> likeComment(
+            @PathVariable String commentId, @RequestHeader("Authorization") String authorizationHeader
+    ) {
+        User user = currentUser(authorizationHeader);
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        Optional<Comment> commentOpt = commentRepository.findById(UUID.fromString(commentId));
+        if (commentOpt.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+        Comment comment = commentOpt.get();
+        if (!commentLikeRepository.existsByCommentIdAndUser(comment.getId(), user)) {
+            commentLikeRepository.save(new CommentLike(comment.getId(), user, ZonedDateTime.now()));
+            // targetId is the post so tapping the notification opens it.
+            notificationService.notifyUser(user, comment.getOwner().getId(), comment.getPostId(),
+                    NotificationTypeEnum.NEW_COMMENT_LIKE, "New like",
+                    user.getUsername() + " liked your comment: " + comment.getContent());
+        }
+        return ResponseEntity.ok("OK");
+    }
+
+    @DeleteMapping("/comments/{commentId}/like")
+    @Transactional
+    public ResponseEntity<String> unlikeComment(
+            @PathVariable String commentId, @RequestHeader("Authorization") String authorizationHeader
+    ) {
+        User user = currentUser(authorizationHeader);
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        commentLikeRepository.deleteAllByCommentIdAndUser(UUID.fromString(commentId), user);
         return ResponseEntity.ok("OK");
     }
 
@@ -471,11 +595,11 @@ public class PostsController {
         return ResponseEntity.ok(response);
     }
 
-    private static CommentResponse toCommentResponse(Comment comment) {
+    private static CommentResponse toCommentResponse(Comment comment, int likes, boolean isLiked) {
         return new CommentResponse(
                 comment.getId().toString(), comment.getPostId().toString(),
                 comment.getOwner().getId().toString(), comment.getContent(),
                 TimeFormat.iso(comment.getTimestamp()), comment.getOwner().getProfileImageUrl(),
-                comment.getOwner().getUsername());
+                comment.getOwner().getUsername(), likes, isLiked);
     }
 }

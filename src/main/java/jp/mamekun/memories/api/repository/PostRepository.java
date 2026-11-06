@@ -34,7 +34,8 @@ public interface PostRepository extends JpaRepository<Post, UUID> {
             CASE WHEN EXISTS (SELECT 1 FROM post_like ml WHERE ml.post_id = p.id AND ml.user_id = :viewerId)
                 THEN TRUE ELSE FALSE END AS liked,
             CASE WHEN EXISTS (SELECT 1 FROM saved_post sp WHERE sp.post_id = p.id AND sp.user_id = :viewerId)
-                THEN TRUE ELSE FALSE END AS saved
+                THEN TRUE ELSE FALSE END AS saved,
+            p.highlighted AS highlighted
         FROM post p
         JOIN app_user u ON p.owner_uid = u.id
         """;
@@ -70,6 +71,16 @@ public interface PostRepository extends JpaRepository<Post, UUID> {
             + " AND p.owner_uid = :ownerId ORDER BY p.timestamp DESC", nativeQuery = true)
     List<PostDetailsProjection> findByOwner(@Param("viewerId") UUID viewerId, @Param("ownerId") UUID ownerId,
                                             @Param("storyCutoff") ZonedDateTime storyCutoff);
+
+    /** All of the owner's stories, expired ones included, newest first. Only for the owner's own archive. */
+    @Query(value = POST_DETAILS_SELECT + " WHERE p.is_deleted = FALSE AND " + STORY_POST
+            + " AND p.owner_uid = :viewerId ORDER BY p.timestamp DESC", nativeQuery = true)
+    List<PostDetailsProjection> findStoryArchive(@Param("viewerId") UUID ownerId);
+
+    /** Stories the owner pinned to their profile, oldest first so they play in order. */
+    @Query(value = POST_DETAILS_SELECT + " WHERE " + VISIBLE_TO_VIEWER + " AND " + STORY_POST
+            + " AND p.highlighted = TRUE AND p.owner_uid = :ownerId ORDER BY p.timestamp ASC", nativeQuery = true)
+    List<PostDetailsProjection> findHighlights(@Param("viewerId") UUID viewerId, @Param("ownerId") UUID ownerId);
 
     @Query(value = POST_DETAILS_SELECT + " WHERE " + VISIBLE_TO_VIEWER + " AND p.id = :postId", nativeQuery = true)
     Optional<PostDetailsProjection> findDetailsById(@Param("viewerId") UUID viewerId, @Param("postId") UUID postId);

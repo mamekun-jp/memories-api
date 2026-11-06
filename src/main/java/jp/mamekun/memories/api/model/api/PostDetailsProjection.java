@@ -13,4 +13,5 @@ public interface PostDetailsProjection {
     int getCommentCount();
     Boolean getLiked();
     Boolean getSaved();
+    Boolean getHighlighted();
 }

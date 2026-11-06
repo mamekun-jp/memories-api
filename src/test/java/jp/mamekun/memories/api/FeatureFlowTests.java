@@ -115,6 +115,34 @@ class FeatureFlowTests {
                 .contentType(MediaType.APPLICATION_JSON).content("{\"content\":\"Lovely!\"}"));
         assertThat(comment.get("id").asText()).isNotBlank();
         assertThat(comment.get("timestamp").asText()).doesNotContain("[");
+        String commentId = comment.get("id").asText();
+
+        // Comment likes: counted once per person, flagged for the viewer, and undoable.
+        call(alice, post("/api/posts/comments/" + commentId + "/like"));
+        call(alice, post("/api/posts/comments/" + commentId + "/like"));
+        JsonNode aliceComment = read(alice, get("/api/posts/comments/" + postId)).get(0);
+        assertThat(aliceComment.get("likes").asInt()).isEqualTo(1);
+        assertThat(aliceComment.get("isLiked").asBoolean()).isTrue();
+        assertThat(read(bob, get("/api/posts/comments/" + postId)).get(0).get("isLiked").asBoolean()).isFalse();
+        call(alice, delete("/api/posts/comments/" + commentId + "/like"));
+        assertThat(read(bob, get("/api/posts/comments/" + postId)).get(0).get("likes").asInt()).isZero();
+        call(alice, post("/api/posts/comments/" + commentId + "/like"));
+        List<String> bobNotificationTypes = new ArrayList<>();
+        read(bob, get("/api/notification/since/0")).forEach(n -> bobNotificationTypes.add(n.get("content").asText()));
+        assertThat(bobNotificationTypes).contains("NEW_COMMENT_LIKE");
+
+        // Highlights: the owner's archive keeps expired stories, and pinned ones show on the profile.
+        assertThat(ids(read(alice, get("/api/posts/stories/archive")))).containsExactly(storyId, oldStoryId);
+        mvc.perform(auth(bob, post("/api/posts/" + oldStoryId + "/highlight"))).andExpect(status().isForbidden());
+        mvc.perform(auth(alice, post("/api/posts/" + postId + "/highlight"))).andExpect(status().isBadRequest());
+        call(alice, post("/api/posts/" + oldStoryId + "/highlight"));
+        JsonNode highlights = read(bob, get("/api/posts/user/" + aliceId + "/highlights"));
+        assertThat(ids(highlights)).containsExactly(oldStoryId);
+        assertThat(highlights.get(0).get("isHighlighted").asBoolean()).isTrue();
+        assertThat(ids(read(bob, get("/api/posts/stories")))).doesNotContain(oldStoryId);
+        call(alice, delete("/api/posts/" + oldStoryId + "/highlight"));
+        assertThat(read(bob, get("/api/posts/user/" + aliceId + "/highlights"))).isEmpty();
+        call(alice, post("/api/posts/" + oldStoryId + "/highlight"));
 
         // Story viewers: only counted for others, only visible to the owner.
         call(bob, post("/api/posts/" + storyId + "/view"));
