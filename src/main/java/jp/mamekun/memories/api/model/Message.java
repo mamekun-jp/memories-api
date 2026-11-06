@@ -43,6 +43,8 @@ public class Message {
 
     private Boolean read;
     private Boolean secured;
+    /** The receiver deleted this message. It stays visible to the sender. */
+    private Boolean deletedByReceiver;
     private ZonedDateTime sentAt;
     private ZonedDateTime receivedAt;
 

@@ -20,6 +20,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -96,16 +97,25 @@ public class AuthController {
         return ResponseEntity.ok(new LoginResponse(token));
     }
 
-    // User Login
+    // User Login. Failures say why, so the app can tell "no such account" from "wrong password":
+    // 404 + USER_NOT_FOUND, 401 + WRONG_PASSWORD.
     @PostMapping({"/login"})
     public ResponseEntity<LoginResponse> login(@RequestBody @Valid LoginRequest loginRequest) {
-        // Authenticate user
-        Authentication authentication = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(
-                        loginRequest.getEmail(),
-                        loginRequest.getPassword()
-                )
-        );
+        if (!userRepository.existsByEmail(loginRequest.getEmail())) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(LoginResponse.error("USER_NOT_FOUND"));
+        }
+
+        Authentication authentication;
+        try {
+            authentication = authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(
+                            loginRequest.getEmail(),
+                            loginRequest.getPassword()
+                    )
+            );
+        } catch (AuthenticationException e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(LoginResponse.error("WRONG_PASSWORD"));
+        }
 
         // Generate JWT Token
         UserDetails userDetails = (UserDetails) authentication.getPrincipal();

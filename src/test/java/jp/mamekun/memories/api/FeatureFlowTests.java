@@ -23,6 +23,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
@@ -173,6 +174,32 @@ class FeatureFlowTests {
         assertThat(read(alice, get("/api/message/conversations")).get(0).get("unreadCount").asInt()).isZero();
         assertThat(read(bob, get("/api/message/conversations")).get(0).get("unreadCount").asInt()).isZero();
 
+        // The receiver can delete messages one by one or several at once. That hides them only
+        // for the receiver; the sender's delete removes the message for both.
+        call(bob, post("/api/message").contentType(MediaType.APPLICATION_JSON)
+                .content("{\"receiver\":\"" + aliceId + "\",\"content\":\"Second\"}"));
+        call(bob, post("/api/message").contentType(MediaType.APPLICATION_JSON)
+                .content("{\"receiver\":\"" + aliceId + "\",\"content\":\"Third\"}"));
+        call(alice, post("/api/message").contentType(MediaType.APPLICATION_JSON)
+                .content("{\"receiver\":\"" + bobId + "\",\"content\":\"Reply\"}"));
+        JsonNode thread = read(alice, get("/api/message/with/" + bobId));
+        assertThat(thread).hasSize(4);
+        String firstId = thread.get(0).get("id").asText();
+        String secondId = thread.get(1).get("id").asText();
+        String thirdId = thread.get(2).get("id").asText();
+        String replyId = thread.get(3).get("id").asText();
+        call(alice, delete("/api/message/" + firstId));
+        call(alice, post("/api/message/delete").contentType(MediaType.APPLICATION_JSON)
+                .content("{\"ids\":[\"" + secondId + "\",\"" + thirdId + "\"]}"));
+        assertThat(ids(read(alice, get("/api/message/with/" + bobId)))).containsExactly(replyId);
+        assertThat(ids(read(bob, get("/api/message/with/" + aliceId)))).containsExactly(firstId, secondId, thirdId, replyId);
+        assertThat(read(alice, get("/api/message/conversations")).get(0).get("lastMessage").asText()).isEqualTo("Reply");
+        // Bob can't delete Alice's copy of her own message; Alice's delete removes it for both.
+        call(bob, delete("/api/message/" + replyId));
+        assertThat(ids(read(alice, get("/api/message/with/" + bobId)))).containsExactly(replyId);
+        call(alice, delete("/api/message/" + replyId));
+        assertThat(ids(read(bob, get("/api/message/with/" + aliceId)))).containsExactly(firstId, secondId, thirdId);
+
         // Blocking hides the person's posts; unblocking brings them back.
         call(bob, get("/api/users/block/" + aliceId));
         assertThat(read(bob, get("/api/posts/feed"))).isEmpty();
@@ -180,6 +207,20 @@ class FeatureFlowTests {
         assertThat(ids(read(bob, get("/api/users/blocked")))).containsExactly(aliceId);
         call(bob, delete("/api/users/block/" + aliceId));
         assertThat(ids(read(bob, get("/api/posts/feed")))).contains(postId);
+
+        // Login failures say whether the account exists.
+        mvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"nobody" + suffix + "@example.com\",\"password\":\"secret123\"}"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error").value("USER_NOT_FOUND"));
+        mvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"bob" + suffix + "@example.com\",\"password\":\"wrong\"}"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.error").value("WRONG_PASSWORD"));
+        mvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"bob" + suffix + "@example.com\",\"password\":\"secret123\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.token").isNotEmpty());
 
         // Token refresh.
         JsonNode refreshed = read(bob, post("/api/auth/refresh"));

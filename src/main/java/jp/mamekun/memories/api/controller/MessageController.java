@@ -5,6 +5,7 @@ import jakarta.validation.Valid;
 import jp.mamekun.memories.api.model.Message;
 import jp.mamekun.memories.api.model.User;
 import jp.mamekun.memories.api.model.api.ConversationResponse;
+import jp.mamekun.memories.api.model.api.DeleteMessagesRequest;
 import jp.mamekun.memories.api.model.api.MessageRequest;
 import jp.mamekun.memories.api.model.api.MessageResponse;
 import jp.mamekun.memories.api.model.api.UserResponse;
@@ -161,6 +162,10 @@ public class MessageController {
         return ResponseEntity.ok(thread);
     }
 
+    /**
+     * Deletes one message. The sender's delete removes it for both people; the receiver's
+     * delete only hides it from the receiver.
+     */
     @DeleteMapping("/{messageId}")
     @Transactional
     public ResponseEntity<String> deleteMessage(
@@ -171,9 +176,48 @@ public class MessageController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
 
-        messageRepository.deleteMessageBySenderAndId(user, UUID.fromString(messageId));
+        UUID id;
+        try {
+            id = UUID.fromString(messageId);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body("Invalid message id.");
+        }
+        deleteForUser(user, messageRepository.findAllByIdInvolving(user, List.of(id)));
 
         return ResponseEntity.ok("Message deleted.");
+    }
+
+    /** Deletes several messages at once, with the same rules as deleting one. */
+    @PostMapping("/delete")
+    @Transactional
+    public ResponseEntity<String> deleteMessages(
+            @RequestBody @Valid DeleteMessagesRequest request, @RequestHeader("Authorization") String authorizationHeader
+    ) {
+        User user = jwtTokenUtil.getUserFromToken(userRepository, authorizationHeader);
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        List<UUID> ids;
+        try {
+            ids = request.getIds().stream().map(UUID::fromString).toList();
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body("Invalid message id.");
+        }
+        deleteForUser(user, messageRepository.findAllByIdInvolving(user, ids));
+
+        return ResponseEntity.ok("Messages deleted.");
+    }
+
+    private void deleteForUser(User user, List<Message> messages) {
+        for (Message m : messages) {
+            if (m.getSender().getId().equals(user.getId())) {
+                messageRepository.delete(m);
+            } else {
+                m.setDeletedByReceiver(true);
+                messageRepository.save(m);
+            }
+        }
     }
 
     private static MessageResponse toResponse(Message message) {

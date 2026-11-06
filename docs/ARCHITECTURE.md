@@ -17,10 +17,10 @@ iOS app ──Bearer JWT──> JwtAuthenticationFilter ──> controller ─�
 
 | Base path | Controller | Purpose |
 |---|---|---|
-| `/api/auth` | `AuthController` | register, login, refresh, forgot/reset password |
+| `/api/auth` | `AuthController` | register, login (failures: `404` + `USER_NOT_FOUND`, `401` + `WRONG_PASSWORD` in `error`), refresh, forgot/reset password |
 | `/api/posts` | `PostsController` | create/feed/stories/like/save/view/report/comments; comment likes (`POST`/`DELETE /comments/{commentId}/like`); story highlights (`GET /stories/archive`, `POST`/`DELETE /{postId}/highlight`, `GET /user/{userId}/highlights`) |
 | `/api/users` | `UserController` | profiles, follow, block, device token registration (`/users/me/update-token`), user search |
-| `/api/message` | `MessageController` | direct messages, conversations inbox, `secured` (E2E) flag |
+| `/api/message` | `MessageController` | direct messages, conversations inbox, `secured` (E2E) flag; delete one (`DELETE /{messageId}`) or many (`POST /delete` with `ids`): the sender's delete removes it for both, the receiver's only hides it for them (`deletedByReceiver`) |
 | `/api/notification` | `NotificationController` | in-app notifications + `/check` badge endpoint polled by the app's background task |
 | `/api/key` | `KeyController` | E2E public-key upload (`POST /api/key`), fetch (`GET /api/key/user/{id}`), status (`GET /api/key/status`) |
 | `/api/image`, `/api/video` | `ImageController`, `VideoController` | media upload + serving, thumbnails |
@@ -36,7 +36,7 @@ iOS app ──Bearer JWT──> JwtAuthenticationFilter ──> controller ─�
 
 ## Data model (`model/`)
 
-`User`, `Post` (`highlighted` pins a story to the profile), `Comment`, `CommentLike`, `Like`, `SavedPost`, `Message` (has `secured`), `Notification`, `Follow`, `Block`,
+`User`, `Post` (`highlighted` pins a story to the profile), `Comment`, `CommentLike`, `Like`, `SavedPost`, `Message` (has `secured`, `deletedByReceiver`), `Notification`, `Follow`, `Block`,
 `Complaint`, `StoryView`, `UserKey` (E2E public keys), `PasswordResetToken`. DTOs in `model/api/`.
 
 ## Adding features
