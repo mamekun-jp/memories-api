@@ -14,8 +14,8 @@ Read this before editing. When in doubt, prefer small diffs that match existing 
 - Gradle 8.11.1 **cannot run on JDK 24+** ("Unsupported class file major version"). Always build with JDK 21:
   ```bash
   ./gradlew build          # compile + tests (uses Java 21 toolchain)
-  ./gradlew bootJar        # produces build/libs/memories-api-0.2.1-SNAPSHOT.jar
-  java -jar build/libs/memories-api-0.2.1-SNAPSHOT.jar
+  ./gradlew bootJar        # produces build/libs/memories-api-0.3.0-SNAPSHOT.jar
+  java -jar build/libs/memories-api-0.3.0-SNAPSHOT.jar
   ```
 - CI pins JDK 21 via `actions/setup-java` in `.github/workflows/docker-image.yml` — do not bump the Gradle wrapper or the runner JDK without checking compatibility.
 - Tests: `src/test/java/.../FeatureFlowTests.java`, `MemoriesApplicationTests.java`. Run `./gradlew test`.

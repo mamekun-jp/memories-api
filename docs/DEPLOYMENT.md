@@ -47,3 +47,5 @@ On push/PR to `main`:
 | `APP_E2E_ENABLED=false` | Rejects key uploads (410) and secured messages (400) → clients fall back to plaintext |
 | `APP_BROADCAST_POSTS=false` | New posts/stories don't notify everyone |
 | `SPRING_PROFILES_ACTIVE=postgres` | Use PostgreSQL (`DATASOURCE_URL/USERNAME/PASSWORD`) |
+| `SQL_LOGGING_LEVEL=WARN` / `SQL_TYPE_DESCRIPTOR=WARN` | Silence Hibernate SQL / bound-parameter logs (levels: OFF..TRACE) |
+| `JPA_SHOW_SQL=false` (default) | Keep `show-sql` off — it prints SQL to stdout ignoring log levels |

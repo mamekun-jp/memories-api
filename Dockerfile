@@ -20,6 +20,7 @@ LABEL maintainer=memories-api
 # docker-compose.yml). Defaults for the volume-backed paths are set here; everything
 # else falls back to the defaults in application.properties, e.g.:
 #   SERVER_PORT, DATASOURCE_URL/USERNAME/PASSWORD, JWT_SECRET, JWT_EXPIRATION,
+#   JPA_SHOW_SQL, SQL_LOGGING_LEVEL, SQL_TYPE_DESCRIPTOR,
 #   MAIL_*, MAIL_FROM, PASSWORD_RESET_BASE_URL,
 #   IMAGE_PATH, IMAGE_THUMBNAIL_PATH, IMAGE_ALLOWED_FORMATS, IMAGE_RESIZE_IMAGES,
 #   IMAGE_MAX_SIZE, IMAGE_THUMB_SIZE, VIDEO_PATH, VIDEO_THUMBNAIL_PATH, VIDEO_ALLOWED_FORMATS,
@@ -33,7 +34,7 @@ ENV DATASOURCE_URL=jdbc:h2:file:/data/memories-db/memories.db \
     VIDEO_THUMBNAIL_PATH=/data/memories-vid/th
 
 # The boot jar produced by ./gradlew build; override with --build-arg if the version changes.
-ARG JAR_FILE=build/libs/memories-api-0.2.1-SNAPSHOT.jar
+ARG JAR_FILE=build/libs/memories-api-0.3.0-SNAPSHOT.jar
 COPY ${JAR_FILE} /home/circleci/app.jar
 
 EXPOSE 9090

@@ -22,7 +22,7 @@ Gradle 8.11.1 requires JDK 21 to run (it fails on newer JDKs) — CI pins Temuri
 
 ```bash
 ./gradlew build        # compile + tests
-./gradlew bootJar      # build/libs/memories-api-0.2.1-SNAPSHOT.jar
+./gradlew bootJar      # build/libs/memories-api-0.3.0-SNAPSHOT.jar
 docker build .         # image (expects the jar from the previous step)
 ```
 
