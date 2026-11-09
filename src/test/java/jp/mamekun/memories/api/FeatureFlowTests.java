@@ -173,6 +173,10 @@ class FeatureFlowTests {
         assertThat(read(alice, get("/api/message/with/" + bobId))).hasSize(1);
         assertThat(read(alice, get("/api/message/conversations")).get(0).get("unreadCount").asInt()).isZero();
         assertThat(read(bob, get("/api/message/conversations")).get(0).get("unreadCount").asInt()).isZero();
+        // Nobody can message themselves.
+        mvc.perform(auth(alice, post("/api/message").contentType(MediaType.APPLICATION_JSON)
+                .content("{\"receiver\":\"" + aliceId + "\",\"content\":\"Note to self\"}")))
+                .andExpect(status().isBadRequest());
 
         // The receiver can delete messages one by one or several at once. That hides them only
         // for the receiver; the sender's delete removes the message for both.

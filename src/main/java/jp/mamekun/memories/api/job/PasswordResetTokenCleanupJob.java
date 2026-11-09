@@ -1,6 +1,7 @@
 package jp.mamekun.memories.api.job;
 
 import jp.mamekun.memories.api.repository.PasswordResetTokenRepository;
+import jakarta.transaction.Transactional;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -20,6 +21,7 @@ public class PasswordResetTokenCleanupJob {
      * Adjust the cron as needed.
      */
     @Scheduled(cron = "${app.password-reset.cleanup-cron:0 15 3 * * *}")
+    @Transactional
     public void cleanupExpiredTokens() {
         ZonedDateTime now = ZonedDateTime.now();
         passwordResetTokenRepository.deleteByExpiresAtBefore(now);

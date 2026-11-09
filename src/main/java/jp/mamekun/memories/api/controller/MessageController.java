@@ -75,6 +75,11 @@ public class MessageController {
         }
         User receiver = receiverOpt.get();
 
+        // You can't send a message to yourself.
+        if (receiver.getId().equals(user.getId())) {
+            return ResponseEntity.badRequest().body(null);
+        }
+
         // Messages to someone who blocked you are silently dropped.
         if (blockRepository.existsByUserIdAndBlockedUserId(receiver.getId(), user.getId())) {
             return ResponseEntity.status(HttpStatus.CREATED).build();
