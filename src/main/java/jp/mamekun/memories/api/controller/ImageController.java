@@ -5,6 +5,10 @@ import com.drew.metadata.Metadata;
 import com.drew.metadata.exif.ExifIFD0Directory;
 import jakarta.servlet.http.HttpServletRequest;
 import jp.mamekun.memories.api.model.api.MediaUploadResponse;
+import jp.mamekun.memories.api.model.User;
+import jp.mamekun.memories.api.repository.UserRepository;
+import jp.mamekun.memories.api.service.MediaOwnershipService;
+import jp.mamekun.memories.api.util.JwtTokenUtil;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.FileSystemResource;
@@ -16,6 +20,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -39,6 +44,17 @@ import static com.drew.metadata.exif.ExifDirectoryBase.TAG_ORIENTATION;
 @RequestMapping("/api/image")
 @Log4j2
 public class ImageController {
+    private final JwtTokenUtil jwtTokenUtil;
+    private final UserRepository userRepository;
+    private final MediaOwnershipService mediaOwnershipService;
+
+    public ImageController(JwtTokenUtil jwtTokenUtil, UserRepository userRepository,
+                    MediaOwnershipService mediaOwnershipService) {
+        this.jwtTokenUtil = jwtTokenUtil;
+        this.userRepository = userRepository;
+        this.mediaOwnershipService = mediaOwnershipService;
+    }
+
     // Define the directory where files will be saved
     @Value("${image.path:'/data/memories-img'}")
     private String uploadDir;
@@ -109,23 +125,33 @@ public class ImageController {
     }
 
     @PostMapping("/upload")
-    public ResponseEntity<MediaUploadResponse> uploadFile(@RequestParam("file") MultipartFile file) {
+    public ResponseEntity<MediaUploadResponse> uploadFile(
+            @RequestParam("file") MultipartFile file, @RequestHeader("Authorization") String authorizationHeader
+    ) {
+        User user = jwtTokenUtil.getUserFromToken(userRepository, authorizationHeader);
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
         try {
-            // Save file to server or cloud storage (e.g., S3, Azure)
-            String uploadedFileUrl = saveFile(file); // Implement this function
+            String uploadedFileUrl = saveFile(file);
+            // Remember who uploaded it, so only they can post it or use it as a profile photo.
+            mediaOwnershipService.recordUpload(uploadedFileUrl, user);
 
             // Return the URL of the uploaded file
             return ResponseEntity.ok(new MediaUploadResponse(uploadedFileUrl));
         } catch (Exception e) {
+            log.error("Image upload failed", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
 
     private String saveFile(MultipartFile file) {
         // Ensure the directory exists
-        File directory = new File(uploadDir);
-        if (!directory.exists() && !directory.mkdirs()) {
-            throw new RuntimeException("Cannot create directory: " + directory);
+        for (String dir : new String[]{uploadDir, thUploadDir}) {
+            File directory = new File(dir);
+            if (!directory.exists() && !directory.mkdirs()) {
+                throw new RuntimeException("Cannot create directory: " + directory);
+            }
         }
 
 

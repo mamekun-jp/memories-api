@@ -2,6 +2,10 @@ package jp.mamekun.memories.api.controller;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jp.mamekun.memories.api.model.api.MediaUploadResponse;
+import jp.mamekun.memories.api.model.User;
+import jp.mamekun.memories.api.repository.UserRepository;
+import jp.mamekun.memories.api.service.MediaOwnershipService;
+import jp.mamekun.memories.api.util.JwtTokenUtil;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ByteArrayResource;
@@ -35,6 +39,17 @@ import java.util.UUID;
 @RequestMapping("/api/video")
 @Log4j2
 public class VideoController {
+    private final JwtTokenUtil jwtTokenUtil;
+    private final UserRepository userRepository;
+    private final MediaOwnershipService mediaOwnershipService;
+
+    public VideoController(JwtTokenUtil jwtTokenUtil, UserRepository userRepository,
+                    MediaOwnershipService mediaOwnershipService) {
+        this.jwtTokenUtil = jwtTokenUtil;
+        this.userRepository = userRepository;
+        this.mediaOwnershipService = mediaOwnershipService;
+    }
+
     @Value("${video.path:'/data/memories-vid'}")
     private String uploadDir;
 
@@ -125,10 +140,18 @@ public class VideoController {
     }
 
     @PostMapping("/upload")
-    public ResponseEntity<MediaUploadResponse> uploadFile(@RequestParam("file") MultipartFile file) {
+    public ResponseEntity<MediaUploadResponse> uploadFile(
+            @RequestParam("file") MultipartFile file, @RequestHeader("Authorization") String authorizationHeader
+    ) {
+        User user = jwtTokenUtil.getUserFromToken(userRepository, authorizationHeader);
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
         try {
             // Save file to server
             String uploadedFileUrl = saveFile(file);
+            // Remember who uploaded it, so only they can post it.
+            mediaOwnershipService.recordUpload(uploadedFileUrl, user);
 
             // Generate thumbnail
             generateThumbnail(uploadedFileUrl);

@@ -41,9 +41,13 @@ public class AccountService {
     private final UserKeyRepository userKeyRepository;
     private final PasswordResetTokenRepository passwordResetTokenRepository;
     private final MediaStorageService mediaStorageService;
+    private final MediaOwnershipService mediaOwnershipService;
 
     @Transactional
     public void deletePost(Post post) {
+        // Only remove the file when it is the owner's own upload and no other post or profile uses it.
+        boolean deleteFile = mediaOwnershipService.mayDeletePostFile(
+                post.getImageUrl(), post.getOwner().getId(), post.getId());
         likeRepository.deleteAllByPostId(post.getId());
         commentLikeRepository.deleteAllByPostId(post.getId());
         commentRepository.deleteAllByPostId(post.getId());
@@ -51,7 +55,10 @@ public class AccountService {
         storyViewRepository.deleteAllByPostId(post.getId());
         notificationRepository.deleteAllByTargetId(post.getId());
         postRepository.delete(post);
-        mediaStorageService.deleteMedia(post.getImageUrl());
+        if (deleteFile) {
+            mediaStorageService.deleteMedia(post.getImageUrl());
+            mediaOwnershipService.forget(post.getImageUrl());
+        }
     }
 
     @Transactional
@@ -76,8 +83,10 @@ public class AccountService {
         userKeyRepository.deleteAllByUser(user);
         passwordResetTokenRepository.deleteByUserId(user.getId());
 
-        if (user.getProfileImageUrl() != null) {
-            mediaStorageService.deleteMedia(user.getProfileImageUrl());
+        String profileImageUrl = user.getProfileImageUrl();
+        if (profileImageUrl != null && mediaOwnershipService.mayDeleteProfileFile(profileImageUrl, user.getId())) {
+            mediaStorageService.deleteMedia(profileImageUrl);
+            mediaOwnershipService.forget(profileImageUrl);
         }
         userRepository.delete(user);
     }

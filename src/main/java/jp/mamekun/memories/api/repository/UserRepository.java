@@ -12,6 +12,11 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     Optional<User> findByEmail(String email);
     boolean existsByEmail(String email);
     boolean existsByUsername(String username);
+
+    boolean existsByProfileImageUrl(String profileImageUrl);
+
+    /** Whether a user other than {@code userId} uses this media file as their profile photo. */
+    boolean existsByProfileImageUrlAndIdNot(String profileImageUrl, UUID userId);
     Optional<User> findByUsername(String username);
     Optional<User> findUserById(UUID id);
 

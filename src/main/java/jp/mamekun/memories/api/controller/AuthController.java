@@ -2,6 +2,8 @@ package jp.mamekun.memories.api.controller;
 
 import jakarta.transaction.Transactional;
 import jakarta.validation.Valid;
+import jp.mamekun.memories.api.config.SpaceSettings;
+import jp.mamekun.memories.api.model.Invite;
 import jp.mamekun.memories.api.model.PasswordResetToken;
 import jp.mamekun.memories.api.model.User;
 import jp.mamekun.memories.api.model.api.LoginRequest;
@@ -9,6 +11,7 @@ import jp.mamekun.memories.api.model.api.LoginResponse;
 import jp.mamekun.memories.api.model.api.ResetPasswordConfirmRequest;
 import jp.mamekun.memories.api.model.api.ResetPasswordRequest;
 import jp.mamekun.memories.api.model.api.SignupRequest;
+import jp.mamekun.memories.api.repository.InviteRepository;
 import jp.mamekun.memories.api.repository.PasswordResetTokenRepository;
 import jp.mamekun.memories.api.repository.UserRepository;
 import jp.mamekun.memories.api.service.EmailService;
@@ -49,6 +52,8 @@ public class AuthController {
     private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
     private final PasswordResetTokenRepository passwordResetTokenRepository;
+    private final InviteRepository inviteRepository;
+    private final SpaceSettings spaceSettings;
 
     @Value("${app.mail.from:no-reply@example.com}")
     private String mailFrom;
@@ -63,7 +68,8 @@ public class AuthController {
     public AuthController(
             JwtTokenUtil jwtTokenUtil, AuthenticationManager authenticationManager, UserRepository userRepository,
             PasswordEncoder passwordEncoder, EmailService emailService,
-            PasswordResetTokenRepository passwordResetTokenRepository
+            PasswordResetTokenRepository passwordResetTokenRepository, InviteRepository inviteRepository,
+            SpaceSettings spaceSettings
     ) {
         this.jwtTokenUtil = jwtTokenUtil;
         this.authenticationManager = authenticationManager;
@@ -71,6 +77,8 @@ public class AuthController {
         this.passwordEncoder = passwordEncoder;
         this.emailService = emailService;
         this.passwordResetTokenRepository = passwordResetTokenRepository;
+        this.inviteRepository = inviteRepository;
+        this.spaceSettings = spaceSettings;
     }
 
     // User Registration
@@ -83,12 +91,33 @@ public class AuthController {
             return ResponseEntity.badRequest().build();
         }
 
+        // Invites: required on invite-only spaces; when one is given it must still be usable.
+        Invite invite = null;
+        String inviteToken = signupRequest.getInviteToken();
+        if (inviteToken != null && !inviteToken.isBlank()) {
+            invite = inviteRepository.findByToken(inviteToken.trim())
+                    .filter(i -> i.isUsable(ZonedDateTime.now()))
+                    .orElse(null);
+            if (invite == null) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(LoginResponse.error("INVITE_INVALID"));
+            }
+        } else if (spaceSettings.isInviteOnly() && !spaceSettings.isAdminEmail(signupRequest.getEmail())) {
+            // Admins (APP_ADMIN_EMAILS) can always sign up, so an invite-only space can get started.
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(LoginResponse.error("INVITE_REQUIRED"));
+        }
+
         String hashedPassword = passwordEncoder.encode(signupRequest.getPassword());
         User newUser = new User(false, false, signupRequest.getUsername(),
                 signupRequest.getEmail(), hashedPassword);
 
         // Save the user to database
         userRepository.save(newUser);
+
+        if (invite != null) {
+            invite.setUsedBy(newUser.getId());
+            invite.setUsedAt(ZonedDateTime.now());
+            inviteRepository.save(invite);
+        }
 
         // Generate JWT Token
         String token = jwtTokenUtil.generateToken(signupRequest.getEmail());

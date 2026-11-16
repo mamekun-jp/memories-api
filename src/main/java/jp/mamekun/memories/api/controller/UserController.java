@@ -1,18 +1,22 @@
 package jp.mamekun.memories.api.controller;
 
 import jakarta.transaction.Transactional;
+import jp.mamekun.memories.api.config.SpaceSettings;
 import jp.mamekun.memories.api.model.Block;
 import jp.mamekun.memories.api.model.Follow;
 import jp.mamekun.memories.api.model.User;
 import jp.mamekun.memories.api.model.api.TokenRegistrationRequest;
 import jp.mamekun.memories.api.model.api.UserRequest;
 import jp.mamekun.memories.api.model.api.UserResponse;
+import jp.mamekun.memories.api.model.api.UserSettingsRequest;
+import jp.mamekun.memories.api.model.api.UserSettingsResponse;
+import jp.mamekun.memories.api.model.enums.NotificationTypeEnum;
 import jp.mamekun.memories.api.repository.BlockRepository;
 import jp.mamekun.memories.api.repository.FollowRepository;
 import jp.mamekun.memories.api.repository.PostRepository;
 import jp.mamekun.memories.api.repository.UserRepository;
-import jp.mamekun.memories.api.model.enums.NotificationTypeEnum;
 import jp.mamekun.memories.api.service.AccountService;
+import jp.mamekun.memories.api.service.MediaOwnershipService;
 import jp.mamekun.memories.api.service.NotificationService;
 import jp.mamekun.memories.api.util.JwtTokenUtil;
 import org.springframework.http.HttpStatus;
@@ -42,11 +46,14 @@ public class UserController {
     private final PostRepository postRepository;
     private final AccountService accountService;
     private final NotificationService notificationService;
+    private final MediaOwnershipService mediaOwnershipService;
+    private final SpaceSettings spaceSettings;
 
     public UserController(
             JwtTokenUtil jwtTokenUtil, UserRepository userRepository, FollowRepository followRepository,
             BlockRepository blockRepository, PostRepository postRepository, AccountService accountService,
-            NotificationService notificationService
+            NotificationService notificationService, MediaOwnershipService mediaOwnershipService,
+            SpaceSettings spaceSettings
     ) {
         this.jwtTokenUtil = jwtTokenUtil;
         this.userRepository = userRepository;
@@ -55,6 +62,41 @@ public class UserController {
         this.postRepository = postRepository;
         this.accountService = accountService;
         this.notificationService = notificationService;
+        this.mediaOwnershipService = mediaOwnershipService;
+        this.spaceSettings = spaceSettings;
+    }
+
+    /** Personal settings plus what the app needs to know about the space (admin, name). */
+    @GetMapping("/me/settings")
+    public ResponseEntity<UserSettingsResponse> getSettings(
+            @RequestHeader("Authorization") String authorizationHeader
+    ) {
+        User user = jwtTokenUtil.getUserFromToken(userRepository, authorizationHeader);
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        return ResponseEntity.ok(settingsOf(user));
+    }
+
+    @PutMapping("/me/settings")
+    @Transactional
+    public ResponseEntity<UserSettingsResponse> updateSettings(
+            @RequestBody UserSettingsRequest request, @RequestHeader("Authorization") String authorizationHeader
+    ) {
+        User user = jwtTokenUtil.getUserFromToken(userRepository, authorizationHeader);
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        if (request.getReadReceipts() != null) {
+            user.setReadReceipts(request.getReadReceipts());
+            userRepository.save(user);
+        }
+        return ResponseEntity.ok(settingsOf(user));
+    }
+
+    private UserSettingsResponse settingsOf(User user) {
+        return new UserSettingsResponse(!Boolean.FALSE.equals(user.getReadReceipts()), spaceSettings.isAdmin(user),
+                spaceSettings.getSpaceName(), spaceSettings.isInviteOnly());
     }
 
     @GetMapping
@@ -106,7 +148,12 @@ public class UserController {
                 userRepository.findByEmail(newEmail).isEmpty()) {
             user.setEmail(newEmail);
         }
-        if (userRequest.getProfileImageUrl() != null) {
+        if (userRequest.getProfileImageUrl() != null
+                && !userRequest.getProfileImageUrl().equals(user.getProfileImageUrl())) {
+            // A profile photo must be the user's own upload.
+            if (!mediaOwnershipService.mayUse(userRequest.getProfileImageUrl(), user)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
             user.setProfileImageUrl(userRequest.getProfileImageUrl());
         }
         if (userRequest.getBio() != null) {

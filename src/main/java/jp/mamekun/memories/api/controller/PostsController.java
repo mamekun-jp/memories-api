@@ -27,6 +27,7 @@ import jp.mamekun.memories.api.repository.SavedPostRepository;
 import jp.mamekun.memories.api.repository.StoryViewRepository;
 import jp.mamekun.memories.api.repository.UserRepository;
 import jp.mamekun.memories.api.service.AccountService;
+import jp.mamekun.memories.api.service.MediaOwnershipService;
 import jp.mamekun.memories.api.service.NotificationService;
 import jp.mamekun.memories.api.util.JwtTokenUtil;
 import jp.mamekun.memories.api.util.TimeFormat;
@@ -79,13 +80,15 @@ public class PostsController {
     private final StoryViewRepository storyViewRepository;
     private final NotificationService notificationService;
     private final AccountService accountService;
+    private final MediaOwnershipService mediaOwnershipService;
 
     public PostsController(
             JwtTokenUtil jwtTokenUtil, PostRepository postRepository, UserRepository userRepository,
             LikeRepository likeRepository, ComplaintRepository complaintRepository,
             CommentRepository commentRepository, CommentLikeRepository commentLikeRepository,
             SavedPostRepository savedPostRepository, StoryViewRepository storyViewRepository,
-            NotificationService notificationService, AccountService accountService) {
+            NotificationService notificationService, AccountService accountService,
+            MediaOwnershipService mediaOwnershipService) {
         this.jwtTokenUtil = jwtTokenUtil;
         this.postRepository = postRepository;
         this.userRepository = userRepository;
@@ -97,6 +100,7 @@ public class PostsController {
         this.storyViewRepository = storyViewRepository;
         this.notificationService = notificationService;
         this.accountService = accountService;
+        this.mediaOwnershipService = mediaOwnershipService;
     }
 
     private ZonedDateTime storyCutoff() {
@@ -123,6 +127,11 @@ public class PostsController {
                     ? PostTypeEnum.valueOf(postRequest.getPostType()) : PostTypeEnum.IMAGE;
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().build();
+        }
+
+        // The media must be the user's own upload (stops passing off someone else's photo as yours).
+        if (!mediaOwnershipService.mayUse(postRequest.getImageUrl(), user)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
 
         Post newPost = new Post();

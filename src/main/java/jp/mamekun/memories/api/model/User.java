@@ -43,6 +43,8 @@ public class User {
     private String bio;
     private String deviceToken;
     private ZonedDateTime lastNotificationCheck;
+    /** Share "Seen" on messages (null = on). When off, you don't see it from others either. */
+    private Boolean readReceipts;
 
     public User(Boolean isApproved, boolean isDeleted, String username, String email, String password) {
         this.isApproved = isApproved;

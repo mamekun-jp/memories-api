@@ -10,6 +10,9 @@ import lombok.Data;
 public class SignupRequest {
     private String serverKey;
 
+    /** Invite token from an invite link; required when the space is invite-only. */
+    private String inviteToken;
+
     private String fullName;
 
     @NotBlank

@@ -91,6 +91,14 @@ public interface PostRepository extends JpaRepository<Post, UUID> {
 
     List<Post> findAllByOwner(User owner);
 
+    /** Whether someone other than {@code ownerId} has a post using this media file. */
+    boolean existsByImageUrlAndOwner_IdNot(String imageUrl, UUID ownerId);
+
+    boolean existsByImageUrl(String imageUrl);
+
+    /** Whether any post other than {@code postId} uses this media file. */
+    boolean existsByImageUrlAndIdNot(String imageUrl, UUID postId);
+
     Optional<Post> findPostByIdAndIsDeleted(UUID id, Boolean isDeleted);
 
     @Query(value = "SELECT COUNT(*) FROM post p WHERE p.owner_uid = :ownerId AND p.is_deleted = FALSE AND "

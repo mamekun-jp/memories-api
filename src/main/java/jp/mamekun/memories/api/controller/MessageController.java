@@ -160,9 +160,24 @@ public class MessageController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
 
-        User other = new User(UUID.fromString(senderId));
+        UUID otherId;
+        try {
+            otherId = UUID.fromString(senderId);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().build();
+        }
+        User other = userRepository.findById(otherId).orElse(new User(otherId));
+        // "Seen" is only shared when both people have read receipts on (like WhatsApp).
+        boolean shareReceipts = !Boolean.FALSE.equals(user.getReadReceipts())
+                && !Boolean.FALSE.equals(other.getReadReceipts());
         List<MessageResponse> thread = messageRepository.findMessageThread(user, other)
-                .stream().map(MessageController::toResponse).toList();
+                .stream().map(message -> {
+                    MessageResponse response = toResponse(message);
+                    if (!shareReceipts) {
+                        response.setIsRead(null);
+                    }
+                    return response;
+                }).toList();
         messageRepository.markThreadRead(other, user, ZonedDateTime.now());
         return ResponseEntity.ok(thread);
     }

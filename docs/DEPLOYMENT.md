@@ -45,6 +45,9 @@ On push/PR to `main`:
 |---|---|
 | `APP_ENABLE_PUSH=false` | No APNs pushes (app still uses its background check) |
 | `APP_E2E_ENABLED=false` | Rejects key uploads (410) and secured messages (400) → clients fall back to plaintext |
+| `APP_ADMIN_EMAILS=a@x.com,b@y.com` | Space admins: can invite people from the app (Settings → Invite people) |
+| `APP_INVITE_ONLY=true` | New accounts need an invite link (admins can always sign up) |
+| `APP_SPACE_NAME=…` | Name shown on invite pages and in the app |
 | `APP_BROADCAST_POSTS=false` | New posts/stories don't notify everyone |
 | `SPRING_PROFILES_ACTIVE=postgres` | Use PostgreSQL (`DATASOURCE_URL/USERNAME/PASSWORD`) |
 | `SQL_LOGGING_LEVEL=WARN` / `SQL_TYPE_DESCRIPTOR=WARN` | Silence Hibernate SQL / bound-parameter logs (levels: OFF..TRACE) |

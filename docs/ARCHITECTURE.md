@@ -17,13 +17,15 @@ iOS app ──Bearer JWT──> JwtAuthenticationFilter ──> controller ─�
 
 | Base path | Controller | Purpose |
 |---|---|---|
-| `/api/auth` | `AuthController` | register, login (failures: `404` + `USER_NOT_FOUND`, `401` + `WRONG_PASSWORD` in `error`), refresh, forgot/reset password |
+| `/api/auth` | `AuthController` | register (optional `inviteToken`; on invite-only spaces `403` + `INVITE_REQUIRED`/`INVITE_INVALID`, admins exempt), login (failures: `404` + `USER_NOT_FOUND`, `401` + `WRONG_PASSWORD` in `error`), refresh, forgot/reset password |
+| `/api/auth/join/{token}`, `/api/auth/invite/{token}` | `InvitePageController` | public invite page (opens the app via `memories-app://join?…` or sends to the App Store and copies the invite for the app's first launch) and invite check (`valid`, `spaceName`) |
+| `/api/invites` | `InviteController` | space admins (`APP_ADMIN_EMAILS`) create (`expiresInHours`, 1–720), list and revoke (`DELETE /{token}`) single-use invites |
 | `/api/posts` | `PostsController` | create/feed/stories/like/save/view/report/comments; comment likes (`POST`/`DELETE /comments/{commentId}/like`); story highlights (`GET /stories/archive`, `POST`/`DELETE /{postId}/highlight`, `GET /user/{userId}/highlights`) |
-| `/api/users` | `UserController` | profiles, follow, block, device token registration (`/users/me/update-token`), user search |
-| `/api/message` | `MessageController` | direct messages, conversations inbox, `secured` (E2E) flag; delete one (`DELETE /{messageId}`) or many (`POST /delete` with `ids`): the sender's delete removes it for both, the receiver's only hides it for them (`deletedByReceiver`) |
+| `/api/users` | `UserController` | profiles (a new `profileImageUrl` must be the user's own upload), follow, block, device token registration (`/users/me/update-token`), user search, settings (`GET`/`PUT /users/me/settings`: `readReceipts`, plus `isAdmin`/`spaceName`/`inviteOnly`) |
+| `/api/message` | `MessageController` | direct messages (not to yourself), conversations inbox, `secured` (E2E) flag; `isRead` in threads is only shared when both people have `readReceipts` on; delete one (`DELETE /{messageId}`) or many (`POST /delete` with `ids`): the sender's delete removes it for both, the receiver's only hides it for them (`deletedByReceiver`) |
 | `/api/notification` | `NotificationController` | in-app notifications + `/check` badge endpoint polled by the app's background task |
 | `/api/key` | `KeyController` | E2E public-key upload (`POST /api/key`), fetch (`GET /api/key/user/{id}`), status (`GET /api/key/status`) |
-| `/api/image`, `/api/video` | `ImageController`, `VideoController` | media upload + serving, thumbnails |
+| `/api/image`, `/api/video` | `ImageController`, `VideoController` | media upload + serving, thumbnails; each upload is recorded with its uploader (`MediaUpload`) |
 
 ## Services (`service/`)
 
@@ -33,16 +35,21 @@ iOS app ──Bearer JWT──> JwtAuthenticationFilter ──> controller ─�
   configured by `config/ApnsConfig.java`) and `NoOpPushNotificationService`. Also supports silent background pushes
   (`sendBackgroundPush`, `content-available`) alongside the app's own background update check.
 - `AccountService`, `UserService`, `EmailService`, `MediaStorageService` — account logic, user ops, mail, media files.
+- `MediaOwnershipService` — who uploaded each media file: posts and profile photos may only use your own uploads
+  (legacy files without a record can be claimed only if nobody else uses them), and a file is deleted from disk only
+  when its owner's last post/profile using it is gone.
+- `config/SpaceSettings` — `APP_SPACE_NAME`, `APP_ADMIN_EMAILS`, `APP_INVITE_ONLY`, `APP_STORE_URL`.
 
 ## Data model (`model/`)
 
 `User`, `Post` (`highlighted` pins a story to the profile), `Comment`, `CommentLike`, `Like`, `SavedPost`, `Message` (has `secured`, `deletedByReceiver`), `Notification`, `Follow`, `Block`,
-`Complaint`, `StoryView`, `UserKey` (E2E public keys), `PasswordResetToken`. DTOs in `model/api/`.
+`Complaint`, `StoryView`, `UserKey` (E2E public keys), `PasswordResetToken`, `MediaUpload` (uploader of each file),
+`Invite` (single-use, expiring; `User.readReceipts` null = on). DTOs in `model/api/`.
 
 ## Adding features
 
 1. New setting → `${ENV_VAR:default}` in `application.properties` + entry in `.env.sample` + Dockerfile comment if it is container-relevant.
-2. New endpoint → controller + DTO + repository method; update this file and `FeatureFlowTests`.
+2. New endpoint → controller + DTO + repository method; update this file and `FeatureFlowTests` (or `SpaceFeaturesTests` for invite-only/admin flows).
 3. New push type → extend `NotificationTypeEnum`, call `notificationService.notifyUser/notifyEveryone`, and make
    sure the app's `NotificationRouter` maps the type to a route.
 4. Build with JDK 21 (`./gradlew build`), then `docker build .` to validate the image.
