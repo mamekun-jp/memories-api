@@ -34,7 +34,7 @@ ENV DATASOURCE_URL=jdbc:h2:file:/data/memories-db/memories.db \
     VIDEO_THUMBNAIL_PATH=/data/memories-vid/th
 
 # The boot jar produced by ./gradlew build; override with --build-arg if the version changes.
-ARG JAR_FILE=build/libs/memories-api-0.3.0-SNAPSHOT.jar
+ARG JAR_FILE=build/libs/memories-api-0.4.0-SNAPSHOT.jar
 COPY ${JAR_FILE} /home/circleci/app.jar
 
 EXPOSE 9090

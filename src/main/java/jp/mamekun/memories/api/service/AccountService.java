@@ -42,6 +42,7 @@ public class AccountService {
     private final PasswordResetTokenRepository passwordResetTokenRepository;
     private final MediaStorageService mediaStorageService;
     private final MediaOwnershipService mediaOwnershipService;
+    private final GroupChatService groupChatService;
 
     @Transactional
     public void deletePost(Post post) {
@@ -76,6 +77,7 @@ public class AccountService {
         followRepository.deleteAllByFolloweeId(user.getId());
         blockRepository.deleteAllByUserId(user.getId());
         blockRepository.deleteAllByBlockedUserId(user.getId());
+        groupChatService.deleteAllFor(user);
         messageRepository.deleteAllBySender(user);
         messageRepository.deleteAllByReceiver(user);
         notificationRepository.deleteAllInvolving(user, user.getId());

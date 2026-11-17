@@ -45,6 +45,18 @@ public class NotificationService {
                 .ifPresent(receiver -> push(receiver.getDeviceToken(), actor, targetId, type, pushTitle, pushBody));
     }
 
+    /**
+     * Push only, without an entry in the notifications list (group messages would flood it).
+     * Does nothing if the receiver is the actor.
+     */
+    public void pushUser(User actor, User receiver, UUID targetId, NotificationTypeEnum type,
+                         String pushTitle, String pushBody) {
+        if (receiver == null || receiver.getId().equals(actor.getId())) {
+            return;
+        }
+        push(receiver.getDeviceToken(), actor, targetId, type, pushTitle, pushBody);
+    }
+
     /** Notify everyone on the server (used for new posts and stories). */
     public void notifyEveryone(User actor, UUID targetId, NotificationTypeEnum type, String pushTitle, String pushBody) {
         save(actor, null, targetId, type, true);
