@@ -7,4 +7,8 @@ import java.util.UUID;
 
 public interface ComplaintRepository extends JpaRepository<Complaint, UUID> {
     void deleteAllByUserId(UUID userId);
+
+    void deleteAllByReportedUserId(UUID reportedUserId);
+
+    long countByReportedUserId(UUID reportedUserId);
 }

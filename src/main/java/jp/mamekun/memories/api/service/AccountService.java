@@ -82,6 +82,7 @@ public class AccountService {
         messageRepository.deleteAllByReceiver(user);
         notificationRepository.deleteAllInvolving(user, user.getId());
         complaintRepository.deleteAllByUserId(user.getId());
+        complaintRepository.deleteAllByReportedUserId(user.getId());
         userKeyRepository.deleteAllByUser(user);
         passwordResetTokenRepository.deleteByUserId(user.getId());
 

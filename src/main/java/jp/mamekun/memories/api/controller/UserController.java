@@ -3,8 +3,10 @@ package jp.mamekun.memories.api.controller;
 import jakarta.transaction.Transactional;
 import jp.mamekun.memories.api.config.SpaceSettings;
 import jp.mamekun.memories.api.model.Block;
+import jp.mamekun.memories.api.model.Complaint;
 import jp.mamekun.memories.api.model.Follow;
 import jp.mamekun.memories.api.model.User;
+import jp.mamekun.memories.api.model.api.ReportRequest;
 import jp.mamekun.memories.api.model.api.TokenRegistrationRequest;
 import jp.mamekun.memories.api.model.api.UserRequest;
 import jp.mamekun.memories.api.model.api.UserResponse;
@@ -12,6 +14,7 @@ import jp.mamekun.memories.api.model.api.UserSettingsRequest;
 import jp.mamekun.memories.api.model.api.UserSettingsResponse;
 import jp.mamekun.memories.api.model.enums.NotificationTypeEnum;
 import jp.mamekun.memories.api.repository.BlockRepository;
+import jp.mamekun.memories.api.repository.ComplaintRepository;
 import jp.mamekun.memories.api.repository.FollowRepository;
 import jp.mamekun.memories.api.repository.PostRepository;
 import jp.mamekun.memories.api.repository.UserRepository;
@@ -48,12 +51,13 @@ public class UserController {
     private final NotificationService notificationService;
     private final MediaOwnershipService mediaOwnershipService;
     private final SpaceSettings spaceSettings;
+    private final ComplaintRepository complaintRepository;
 
     public UserController(
             JwtTokenUtil jwtTokenUtil, UserRepository userRepository, FollowRepository followRepository,
             BlockRepository blockRepository, PostRepository postRepository, AccountService accountService,
             NotificationService notificationService, MediaOwnershipService mediaOwnershipService,
-            SpaceSettings spaceSettings
+            SpaceSettings spaceSettings, ComplaintRepository complaintRepository
     ) {
         this.jwtTokenUtil = jwtTokenUtil;
         this.userRepository = userRepository;
@@ -64,6 +68,7 @@ public class UserController {
         this.notificationService = notificationService;
         this.mediaOwnershipService = mediaOwnershipService;
         this.spaceSettings = spaceSettings;
+        this.complaintRepository = complaintRepository;
     }
 
     /** Personal settings plus what the app needs to know about the space (admin, name). */
@@ -349,5 +354,39 @@ public class UserController {
 
         blockRepository.deleteAllByUserIdAndBlockedUserId(user.getId(), UUID.fromString(userId));
         return ResponseEntity.ok("OK");
+    }
+
+    /** Reports someone from their profile or a chat. Messages are end-to-end encrypted, so only the reason is stored. */
+    @PostMapping("/report/{userId}")
+    @Transactional
+    public ResponseEntity<String> reportUser(
+            @PathVariable String userId, @RequestBody(required = false) ReportRequest request,
+            @RequestHeader("Authorization") String authorizationHeader
+    ) {
+        User user = jwtTokenUtil.getUserFromToken(userRepository, authorizationHeader);
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        Optional<User> reported = userRepository.findById(UUID.fromString(userId));
+        if (reported.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+        if (reported.get().getId().equals(user.getId())) {
+            return ResponseEntity.badRequest().build();
+        }
+
+        String reason = request == null ? null : truncate(request.getReason(), 40);
+        String context = request == null ? null : truncate(request.getContext(), 20);
+        complaintRepository.save(Complaint.aboutUser(user.getId(), reported.get().getId(), reason, context));
+        return ResponseEntity.ok("OK");
+    }
+
+    private static String truncate(String value, int max) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.length() > max ? trimmed.substring(0, max) : trimmed;
     }
 }

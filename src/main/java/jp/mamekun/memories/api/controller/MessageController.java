@@ -80,6 +80,11 @@ public class MessageController {
             return ResponseEntity.badRequest().body(null);
         }
 
+        // Unblock someone before writing to them.
+        if (blockRepository.existsByUserIdAndBlockedUserId(user.getId(), receiver.getId())) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+
         // Messages to someone who blocked you are silently dropped.
         if (blockRepository.existsByUserIdAndBlockedUserId(receiver.getId(), user.getId())) {
             return ResponseEntity.status(HttpStatus.CREATED).build();

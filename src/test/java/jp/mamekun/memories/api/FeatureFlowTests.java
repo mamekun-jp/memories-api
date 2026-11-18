@@ -3,6 +3,7 @@ package jp.mamekun.memories.api;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jp.mamekun.memories.api.model.Post;
+import jp.mamekun.memories.api.repository.ComplaintRepository;
 import jp.mamekun.memories.api.repository.PostRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -59,6 +60,9 @@ class FeatureFlowTests {
 
     @Autowired
     private PostRepository postRepository;
+
+    @Autowired
+    private ComplaintRepository complaintRepository;
 
     @Test
     void socialFeaturesWorkEndToEnd() throws Exception {
@@ -209,8 +213,20 @@ class FeatureFlowTests {
         assertThat(read(bob, get("/api/posts/feed"))).isEmpty();
         assertThat(read(bob, get("/api/posts/stories"))).isEmpty();
         assertThat(ids(read(bob, get("/api/users/blocked")))).containsExactly(aliceId);
+        // While blocked, bob can't write to alice until he unblocks her.
+        mvc.perform(auth(bob, post("/api/message")).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"receiver\":\"" + aliceId + "\",\"content\":\"hi\"}"))
+                .andExpect(status().isForbidden());
         call(bob, delete("/api/users/block/" + aliceId));
         assertThat(ids(read(bob, get("/api/posts/feed")))).contains(postId);
+
+        // Reporting someone keeps the reason and where it came from; you can't report yourself.
+        mvc.perform(auth(bob, post("/api/users/report/" + aliceId)).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"reason\":\"HARASSMENT\",\"context\":\"CHAT\"}"))
+                .andExpect(status().isOk());
+        mvc.perform(auth(bob, post("/api/users/report/" + bobId))).andExpect(status().isBadRequest());
+        mvc.perform(auth(bob, post("/api/users/report/" + UUID.randomUUID()))).andExpect(status().isNotFound());
+        assertThat(complaintRepository.countByReportedUserId(UUID.fromString(aliceId))).isEqualTo(1);
 
         // Login failures say whether the account exists.
         mvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
@@ -232,6 +248,7 @@ class FeatureFlowTests {
 
         // Deleting an account removes everything that pointed at it.
         call(alice, delete("/api/users/me"));
+        assertThat(complaintRepository.countByReportedUserId(UUID.fromString(aliceId))).isZero();
         assertThat(read(bob, get("/api/posts/feed"))).isEmpty();
         assertThat(read(bob, get("/api/message/conversations"))).isEmpty();
         assertThat(read(bob, get("/api/notification/since/0"))).isEmpty();
